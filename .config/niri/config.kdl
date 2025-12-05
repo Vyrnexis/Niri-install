@@ -3,11 +3,9 @@
 // Check the wiki for full configuration: https://yalter.github.io/niri/Configuration:-Introduction
 
 environment {
-    variables {
-        "GTK_THEME" "Dracula"
-        "XCURSOR_THEME" "Bibata-Modern-Ice"
-        "XCURSOR_SIZE" "24"
-    }
+    GTK_THEME "Dracula"
+    XCURSOR_THEME "Bibata-Modern-Ice"
+    XCURSOR_SIZE "24"
 }
 
 // Input device configuration.
