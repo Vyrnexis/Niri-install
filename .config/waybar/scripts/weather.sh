@@ -18,7 +18,7 @@ STATUS_URL="${BASE_URL}?format=%c%t&${weather_unit#?}"
 FULL_URL="${BASE_URL}?${weather_unit#?}"
 
 weather_status(){
-    curl -fsS --max-time 5 "$STATUS_URL" | tr -d '\n' || echo "Weather unavailable"
+    curl -fsS --max-time 10 "$STATUS_URL" | tr -d '\n' || echo "Weather unavailable"
 }
 
 print_weather(){
