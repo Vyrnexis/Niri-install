@@ -137,6 +137,6 @@
     "custom/weather": {
         "exec": "~/.config/waybar/scripts/weather.sh -o",
         "on-click": "kitty -e ~/.config/waybar/scripts/weather.sh",
-        "interval": 360
+        "interval": 120
     }
 }

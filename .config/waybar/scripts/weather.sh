@@ -15,10 +15,10 @@ weather_unit="${WEATHER_UNIT:-?m}"
 
 BASE_URL="https://wttr.in/${weather_location}"
 STATUS_URL="${BASE_URL}?format=%c%t&${weather_unit#?}"
-FULL_URL="${BASE_URL}?${weather_unit#?}"
+FULL_URL="${BASE_URL}?${weather_unit#?}&format=3"
 
 weather_status(){
-    curl -fsS --max-time 10 "$STATUS_URL" | tr -d '\n' || echo "Weather unavailable"
+    curl -fsS --max-time 10 "$STATUS_URL" | tr -d '\n' || printf "Weather unavailable"
 }
 
 print_weather(){
