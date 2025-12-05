@@ -136,7 +136,6 @@
     },
     "custom/weather": {
         "exec": "~/.config/waybar/scripts/weather.sh -o",
-        "exec-if": "curl -fsS --max-time 2 https://wttr.in/?format=3 >/dev/null",
         "on-click": "kitty -e ~/.config/waybar/scripts/weather.sh",
         "interval": 360
     }

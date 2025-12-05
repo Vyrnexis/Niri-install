@@ -6,6 +6,8 @@ entries=(
 "Super+D|Application launcher|~/.local/bin/nimlaunch"
 "Super+B|Open browser|brave"
 "Super+N|Open file manager|thunar"
+"Super+B|Open browser|brave"
+"Super+N|Open file manager|thunar"
 "Super+I|Lock screen|gtklock -s"
 "Super+Q|Close focused window|niri msg action close-window"
 "Super+Shift+E|Exit Niri session|niri msg action quit"
