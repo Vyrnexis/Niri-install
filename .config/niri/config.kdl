@@ -6,6 +6,15 @@ environment {
     GTK_THEME "Dracula"
     XCURSOR_THEME "Bibata-Modern-Ice"
     XCURSOR_SIZE "24"
+    GDK_BACKEND "wayland"
+    QT_QPA_PLATFORMTHEME "gtk3"
+    XDG_CURRENT_DESKTOP "niri"
+    XDG_SESSION_DESKTOP "niri"
+    XDG_SESSION_TYPE "wayland"
+    QT_QPA_PLATFORM "wayland"
+    SDL_VIDEODRIVER "wayland"
+    CLUTTER_BACKEND "wayland"
+    MOZ_ENABLE_WAYLAND "1"
 }
 
 // Input device configuration.
