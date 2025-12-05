@@ -14,40 +14,23 @@ fi
 IDLE_CMD=(swayidle -w \
     timeout 300 "$LOCK_CMD" \
     before-sleep "$LOCK_CMD")
-IDLE_UNIT="niri-swayidle.service"
 
 command -v swayidle >/dev/null 2>&1 || { echo "swayidle not found" >&2; exit 1; }
 
-has_user_systemd() {
-    command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1
-}
-
 is_running() {
-    if has_user_systemd; then
-        systemctl --user is-active --quiet "$IDLE_UNIT"
-    else
-        pgrep -x swayidle >/dev/null 2>&1
-    fi
+    pgrep -x swayidle >/dev/null 2>&1
 }
 
 start_idle() {
     if is_running; then
         return
     fi
-    if has_user_systemd; then
-        systemd-run --user --quiet --unit "$IDLE_UNIT" --description "Niri swayidle locker" "${IDLE_CMD[@]}" >/dev/null 2>&1 || \
-            setsid -f "${IDLE_CMD[@]}" >/dev/null 2>&1
-    else
-        setsid -f "${IDLE_CMD[@]}" >/dev/null 2>&1
-    fi
+    setsid -f "${IDLE_CMD[@]}" >/dev/null 2>&1
 }
 
 stop_idle() {
     if ! is_running; then
         return
-    fi
-    if has_user_systemd; then
-        systemctl --user stop "$IDLE_UNIT" >/dev/null 2>&1 || true
     fi
     pkill -x swayidle >/dev/null 2>&1 || true
 }
