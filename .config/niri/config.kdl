@@ -127,7 +127,9 @@ window-rule {
 
 window-rule {
     match app-id=r#"^nimlaunch$"#
-    focus-ring { off }
+    focus-ring {
+        off
+    }
 }
 
 binds {

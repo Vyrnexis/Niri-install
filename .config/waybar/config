@@ -32,9 +32,10 @@
     "niri/workspaces": {
         "disable-scroll": false,
         "all-outputs": true,
-        "format": "{index} {icon}",
+        "format": "{icon}",
         "format-icons": {
-            "default": "󰓎" // same icon for all workspaces
+            "focused": "",
+            "default": ""
         },
         "on-click": "niri msg action toggle-overview"
     },
