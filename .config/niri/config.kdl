@@ -100,6 +100,7 @@ spawn-at-startup "mako"
 spawn-at-startup "blueman-applet"
 spawn-sh-at-startup "sleep 2 && nm-applet --indicator"
 # start swayidle for auto lock/DPMS at session start
+// start swayidle for auto lock/DPMS at session start
 spawn-at-startup "~/.config/waybar/scripts/idle_toggle.sh enable"
 
 hotkey-overlay {

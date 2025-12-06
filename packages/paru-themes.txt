@@ -2,4 +2,3 @@
 dracula-gtk-theme
 dracula-icons-git
 bibata-cursor-theme
-ttf-font-awesome
