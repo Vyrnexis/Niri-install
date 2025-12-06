@@ -8,6 +8,7 @@ MiscFullPathInTitle=TRUE
 MiscMiddleClickAction=THUNAR_MIDDLE_CLICK_ACTION_OPEN_NEW_TAB
 MiscOpenNewWindowInCurrentDirectory=TRUE
 MiscSingleClick=FALSE
+MiscSidePaneShow=TRUE
 MiscToolbarStyle=THUNAR_TOOLBAR_STYLE_ICONS
 MiscUseThunarTrash=TRUE
 SortColumn=name

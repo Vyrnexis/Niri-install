@@ -9,6 +9,8 @@ tumbler
 thunar
 thunar-archive-plugin
 thunar-volman
+exfatprogs
+ntfs-3g
 ffmpegthumbnailer
 grim
 mako
