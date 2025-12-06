@@ -19,7 +19,9 @@ STATUS_URL="${BASE_URL}?format=%c%t&${unit}"
 FULL_URL="${BASE_URL}?${unit}&format=3"
 
 weather_status(){
-    curl -fsS --http1.1 --max-time 10 "$STATUS_URL" | tr -d '\n' || printf "Weather unavailable"
+    curl -fsS --http1.1 --max-time 10 "$STATUS_URL" | tr -d '\n' \
+      || curl -fsS --http1.1 --max-time 10 "${BASE_URL}?format=%c%t" | tr -d '\n' \
+      || printf "Weather unavailable"
 }
 
 print_weather(){
@@ -28,6 +30,8 @@ print_weather(){
     trap 'rm -f "$tmp"' EXIT
 
     if curl -fsS --http1.1 --max-time 10 "$FULL_URL" -o "$tmp"; then
+        ${PAGER:-less} -R "$tmp"
+    elif curl -fsS --http1.1 --max-time 10 "${BASE_URL}?format=3" -o "$tmp"; then
         ${PAGER:-less} -R "$tmp"
     else
         echo "Cannot reach wttr.in right now."
