@@ -335,6 +335,10 @@ EOF
   log_info "Syncing repository configs to ~/.config"
   rsync -a --exclude '.gitkeep' "$SCRIPT_DIR/.config/" "$HOME/.config/"
 
+  if [[ -d "$HOME/.config/waybar/scripts" ]]; then
+    chmod +x "$HOME/.config/waybar/scripts/"* || true
+  fi
+
   apply_theme
   write_theme_env
 }
