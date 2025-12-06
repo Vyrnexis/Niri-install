@@ -26,20 +26,26 @@ if [[ -z ${NIRI_SOCKET} && -n ${XDG_RUNTIME_DIR:-} ]]; then
     done
 fi
 
-POWER_OFF_CMD=(niri msg)
-POWER_ON_CMD=(niri msg)
-if [[ -n ${NIRI_SOCKET:-} ]]; then
-    POWER_OFF_CMD+=(--socket "$NIRI_SOCKET")
-    POWER_ON_CMD+=(--socket "$NIRI_SOCKET")
+POWER_OFF_CMD=()
+POWER_ON_CMD=()
+if command -v niri >/dev/null 2>&1; then
+    POWER_OFF_CMD=(niri msg)
+    POWER_ON_CMD=(niri msg)
+    if [[ -n ${NIRI_SOCKET:-} ]]; then
+        POWER_OFF_CMD+=(--socket "$NIRI_SOCKET")
+        POWER_ON_CMD+=(--socket "$NIRI_SOCKET")
+    fi
+    POWER_OFF_CMD+=(action power-off-monitors)
+    POWER_ON_CMD+=(action power-on-monitors)
 fi
-POWER_OFF_CMD+=(action power-off-monitors)
-POWER_ON_CMD+=(action power-on-monitors)
 
-IDLE_CMD=(swayidle -w \
-    timeout "$LOCK_TIMEOUT" "${LOCK_CMD[@]}" \
-    timeout "$DPMS_TIMEOUT" "${POWER_OFF_CMD[@]}" \
-    resume "${POWER_ON_CMD[@]}" \
-    before-sleep "${LOCK_CMD[@]}")
+IDLE_CMD=(swayidle -w)
+IDLE_CMD+=("timeout" "$LOCK_TIMEOUT" "${LOCK_CMD[@]}")
+if ((${#POWER_OFF_CMD[@]})); then
+    IDLE_CMD+=("timeout" "$DPMS_TIMEOUT" "${POWER_OFF_CMD[@]}")
+    IDLE_CMD+=("resume" "${POWER_ON_CMD[@]}")
+fi
+IDLE_CMD+=("before-sleep" "${LOCK_CMD[@]}")
 
 command -v swayidle >/dev/null 2>&1 || { echo "swayidle not found" >&2; exit 1; }
 
@@ -56,7 +62,10 @@ start_idle() {
         DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-}" \
         NIRI_SOCKET="${NIRI_SOCKET:-}" \
         PATH="$PATH" \
-        setsid -f "${IDLE_CMD[@]}" >/dev/null 2>&1
+        setsid -f "${IDLE_CMD[@]}" >/dev/null 2>&1 || {
+            echo "Failed to start swayidle" >&2
+            exit 1
+        }
 }
 
 stop_idle() {
