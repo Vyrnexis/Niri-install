@@ -13,6 +13,8 @@ exfatprogs
 ntfs-3g
 ffmpegthumbnailer
 grim
+slurp
+swappy
 mako
 imv
 brightnessctl
@@ -23,10 +25,11 @@ gammastep
 power-profiles-daemon
 networkmanager
 network-manager-applet
-libappindicator-gtk3
+libappindicator
 bluez
 bluez-utils
 blueman
+orca
 udisks2
 gvfs
 gvfs-dnssd

@@ -1,4 +1,4 @@
-# Theming and cursor packages from the AUR
-dracula-gtk-theme
+# Theming and cursor packages installed via paru
+ant-dracula-theme-git
 dracula-icons-git
-bibata-cursor-theme
+dracula-cursors-git

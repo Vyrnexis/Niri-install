@@ -6,7 +6,7 @@
 # Locale and desktop defaults
 export LANG=en_AU.UTF-8
 export GDK_BACKEND=wayland
-export GTK_THEME="Dracula"
+export GTK_THEME="Ant-Dracula"
 export XDG_SESSION_TYPE=wayland
 export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-niri}"
 export MANPAGER="sh -c 'awk '\''{ gsub(/\\x1B\\[[0-9;]*m/, \"\", $0); gsub(/.\\x08/, \"\", $0); print }'\'' | bat -p -lman'"
@@ -99,4 +99,4 @@ _dracula_precmd() {
 precmd_functions+=(_dracula_precmd)
 
 # Fetch
-nymph
+command -v nymph >/dev/null 2>&1 && nymph

@@ -47,8 +47,8 @@ The installer must not be run as root; it prompts for your sudo password wheneve
 - Niri compositor, Waybar panel, gtklock/swayidle, and supporting Wayland tools
 - Kitty terminal, Thunar file manager, notification daemon (mako), screenshot utilities (grim, slurp, swappy)
 - PipeWire audio stack with WirePlumber session manager
-- Paru AUR helper plus AUR packages such as Brave browser, Dracula GTK/icons, NimLaunch, and Nymph
-- Dracula GTK theme, Dracula icons, Bibata cursor theme, Nerd Fonts, and environment configuration for GTK/Qt apps
+- Paru AUR helper plus theme/application packages such as Brave browser, Ant-Dracula GTK, Dracula icons/cursors, NimLaunch, and Nymph
+- Ant-Dracula GTK theme, Dracula icons/cursors, Nerd Fonts, and environment configuration for GTK/Qt apps
 - System services: NetworkManager, Bluetooth, seatd, greetd + tuigreet, user-level PipeWire services (when available)
 - Custom configuration files placed under `~/.config/`
 - Zsh installed and set as the default shell (with bash config still installed and backed up)
@@ -57,12 +57,13 @@ The installer must not be run as root; it prompts for your sudo password wheneve
 
 - Reboot after the script completes so greetd and the configured services start cleanly.
 - When Niri starts, custom bindings add `Super+Enter` (Kitty terminal), `Super+D` (NimLaunch), `Super+B` (Brave browser), `Super+N` (Thunar file manager), and `Mod+Shift+/` (Niri’s built-in keybinding overlay). Niri defaults remain for navigation and layout.
-- Cursor theming: the script installs Bibata and writes `~/.icons/default/index.theme` so the cursor is consistent across GTK, Qt, and Wayland applications.
+- Cursor theming: the script installs Dracula cursors and writes `~/.icons/default/index.theme` so the cursor is consistent across GTK, Qt, and Wayland applications.
 - Niri’s built-in keybinding overlay (`Mod+Shift+/`) is available without extra tooling.
 
 ## Troubleshooting
 
 - If `paru` fails to build, ensure that `base-devel` is installed (the script installs it automatically) and that you have network access.
+- Core desktop package sets and AUR theme packages are treated as required. If one is unavailable, the installer now stops instead of silently skipping it. You can bypass this with `ALLOW_PARTIAL_INSTALL=1 ./niri_install.sh`.
 - Running the script twice is safe; package groups use `--needed` and configuration syncs refresh existing files.
 - The installer backs up any existing `~/.bashrc` and `~/.zshrc` (timestamped) before installing the repository versions; adjust them afterwards if desired.
 

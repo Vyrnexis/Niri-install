@@ -3,8 +3,8 @@
 // Check the wiki for full configuration: https://yalter.github.io/niri/Configuration:-Introduction
 
 environment {
-    GTK_THEME "Dracula"
-    XCURSOR_THEME "Bibata-Modern-Ice"
+    GTK_THEME "Ant-Dracula"
+    XCURSOR_THEME "Dracula-cursors"
     XCURSOR_SIZE "24"
     GDK_BACKEND "wayland"
     QT_QPA_PLATFORMTHEME "gtk3"

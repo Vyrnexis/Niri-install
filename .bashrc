@@ -8,7 +8,7 @@
 ### Niri-Install Additions
 export LANG=en_AU.UTF-8
 export GDK_BACKEND=wayland
-export GTK_THEME="Dracula"
+export GTK_THEME="Ant-Dracula"
 export XDG_SESSION_TYPE=wayland
 export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-niri}"
 export MANPAGER="sh -c 'awk '\''{ gsub(/\x1B\[[0-9;]*m/, \"\", \$0); gsub(/.\x08/, \"\", \$0); print }'\'' | bat -p -lman'"
@@ -22,16 +22,19 @@ export PATH="$HOME/.nimble/bin:$PATH"
 export PATH="$HOME/.choosenim/current/bin:$PATH"
 
 # Fzf
-eval "$(fzf --bash)"
+if command -v fzf >/dev/null 2>&1; then
+    eval "$(fzf --bash)"
+fi
 export FZF_DEFAULT_COMMAND="fd --hidden --strip-cwd-prefix --exclude .git "
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :500 {}'"
 export FZF_ALT_C_COMMAND="fd --type=d --hidden --strip-cwd-prefix --exclude .git"
 export FZF_CTRL_T_OPTS="--preview 'bat --color=always -n --line-range :500 {}'"
 export FZF_ALT_C_OPTS="--preview 'eza --icons=always --tree --color=always {} | head -200'"
 
 # Zoxide
-eval "$(zoxide init bash)"
+if command -v zoxide >/dev/null 2>&1; then
+    eval "$(zoxide init bash)"
+fi
 
 # bat
 export BAT_THEME="Dracula"
@@ -91,4 +94,4 @@ if [[ $PROMPT_COMMAND != *__dracula_prompt* ]]; then
 fi
 
 # Fetch
-nymph
+command -v nymph >/dev/null 2>&1 && nymph

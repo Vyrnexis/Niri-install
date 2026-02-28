@@ -20,16 +20,16 @@ readonly TARGET_ZSHRC="$HOME/.zshrc"
 readonly REPO_ZSHRC="$SCRIPT_DIR/.zshrc"
 
 PACMAN_SETS=(
-  "packages/pacman-core.txt|Core system packages"
-  "packages/pacman-desktop.txt|Desktop environment packages"
-  "packages/pacman-audio.txt|PipeWire audio stack"
-  "packages/pacman-fonts.txt|Font packages"
-  "packages/pacman-extras.txt|CLI utilities and extras"
+  "packages/pacman-core.txt|Core system packages|required"
+  "packages/pacman-desktop.txt|Desktop environment packages|required"
+  "packages/pacman-audio.txt|PipeWire audio stack|required"
+  "packages/pacman-fonts.txt|Font packages|required"
+  "packages/pacman-extras.txt|CLI utilities and extras|optional"
 )
 
 PARU_SETS=(
-  "packages/paru-apps.txt|AUR applications"
-  "packages/paru-themes.txt|AUR theming packages"
+  "packages/paru-apps.txt|AUR applications|optional"
+  "packages/paru-themes.txt|AUR theming packages|required"
 )
 
 # --- logging helpers ------------------------------------------------------
@@ -102,7 +102,7 @@ read_pkg_file() {
 }
 
 install_pkg_set() {
-  local manager="$1" file="$2" label="$3"
+  local manager="$1" file="$2" label="$3" required="${4:-optional}"
   local pkgs
   mapfile -t pkgs < <(read_pkg_file "$file")
   if ((${#pkgs[@]} == 0)); then
@@ -118,9 +118,19 @@ install_pkg_set() {
     fi
   done
   if ((${#missing[@]})); then
+    if [[ $required == required && ${ALLOW_PARTIAL_INSTALL:-0} != 1 ]]; then
+      log_err "Required package set has unavailable packages ($manager): ${missing[*]}"
+      log_err "Fix package names or re-run with ALLOW_PARTIAL_INSTALL=1 to continue."
+      exit 1
+    fi
     log_warn "Skipping unavailable packages ($manager): ${missing[*]}"
   fi
   if ((${#available[@]} == 0)); then
+    if [[ $required == required && ${ALLOW_PARTIAL_INSTALL:-0} != 1 ]]; then
+      log_err "Required package set has no installable packages: $file"
+      log_err "Fix package sources or re-run with ALLOW_PARTIAL_INSTALL=1 to continue."
+      exit 1
+    fi
     log_warn "No installable packages in $file; skipping."
     return
   fi
@@ -134,10 +144,10 @@ install_pkg_set() {
 
 install_pkg_sets() {
   local manager="$1"; shift
-  local entry file label
+  local entry file label required
   for entry in "$@"; do
-    IFS='|' read -r file label <<< "$entry"
-    install_pkg_set "$manager" "$SCRIPT_DIR/$file" "$label"
+    IFS='|' read -r file label required <<< "$entry"
+    install_pkg_set "$manager" "$SCRIPT_DIR/$file" "$label" "${required:-optional}"
   done
 }
 
@@ -214,12 +224,12 @@ apply_theme() {
   local failed=0
   local setting schema key value
   local settings=(
-    "org.gnome.desktop.interface|gtk-theme|Dracula"
+    "org.gnome.desktop.interface|gtk-theme|Ant-Dracula"
     "org.gnome.desktop.interface|icon-theme|Dracula"
     "org.gnome.desktop.interface|color-scheme|prefer-dark"
-    "org.gnome.desktop.interface|cursor-theme|Bibata-Modern-Ice"
+    "org.gnome.desktop.interface|cursor-theme|Dracula-cursors"
     "org.gnome.desktop.interface|font-name|JetBrainsMono Nerd Font 11"
-    "org.gnome.desktop.wm.preferences|theme|Dracula"
+    "org.gnome.desktop.wm.preferences|theme|Ant-Dracula"
   )
   for setting in "${settings[@]}"; do
     IFS='|' read -r schema key value <<< "$setting"
@@ -227,9 +237,9 @@ apply_theme() {
   done
 
   if ((failed)); then
-    log_warn "Could not apply all Dracula theme settings; continue manually if needed."
+    log_warn "Could not apply all theme settings; continue manually if needed."
   else
-    log_info "Applied Dracula theme via gsettings."
+    log_info "Applied GTK/icon/cursor theme via gsettings."
   fi
 }
 
@@ -237,8 +247,8 @@ write_theme_env() {
   local env_dir="$HOME/.config/environment.d"
   mkdir -p "$env_dir"
   local env_vars=(
-    "GTK_THEME=Dracula"
-    "XCURSOR_THEME=Bibata-Modern-Ice"
+    "GTK_THEME=Ant-Dracula"
+    "XCURSOR_THEME=Dracula-cursors"
     "XCURSOR_SIZE=24"
     "QT_QPA_PLATFORMTHEME=gtk3"
     "GTK_USE_PORTAL=1"
@@ -323,13 +333,13 @@ sync_configs() {
   log_info "Preparing config directories"
   mkdir -p "$HOME/.config" "$HOME/.config/gtk-4.0" ~/.themes ~/.icons ~/.config/environment.d
 
-  log_info "Setting Bibata as cursor default"
+  log_info "Setting Dracula cursor theme as default"
   mkdir -p "$HOME/.icons/default"
   cat > "$HOME/.icons/default/index.theme" <<'EOF'
 [Icon Theme]
 Name=Default
 Comment=Default cursor theme
-Inherits=Bibata-Modern-Ice
+Inherits=Dracula-cursors
 EOF
 
   log_info "Syncing repository configs to ~/.config"
@@ -469,7 +479,7 @@ final_summary() {
   • PipeWire audio system (modern replacement for PulseAudio)
   • Paru AUR helper installed
   • Nerd Fonts with icon support
-  • Screenshot tools (grim + slurp)
+  • Screenshot tools (grim + slurp + swappy)
   • Audio/brightness controls configured
   • Auto-lock after 5 minutes of inactivity
   • Consistent Dracula theme across all components
