@@ -16,6 +16,8 @@ man-pages
 wpa_supplicant
 lm_sensors
 smartmontools
+fwupd
+jq
 # NimLaunch dependencies
 sdl2-compat
 sdl2_image

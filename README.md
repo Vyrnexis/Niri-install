@@ -44,9 +44,10 @@ The installer must not be run as root; it prompts for your sudo password wheneve
 
 ## What the Script Installs
 
-- Niri compositor, Waybar panel, gtklock/swayidle, and supporting Wayland tools
-- Kitty terminal, Thunar file manager, notification daemon (mako), screenshot utilities (grim, slurp, swappy)
+- Niri compositor, Waybar panel, gtklock/swayidle, and supporting Wayland tools (kanshi, wlr-randr, wev)
+- Kitty terminal, Thunar file manager, notification daemon (mako), screenshot utilities (grim, slurp, swappy, satty)
 - PipeWire audio stack with WirePlumber session manager
+- Clipboard history tooling (`cliphist` + `nwg-clipman`), improved Qt/portal compatibility, and removable-drive helpers (`udiskie`)
 - Paru AUR helper plus theme/application packages such as Brave browser, Ant-Dracula GTK, Dracula icons/cursors, NimLaunch, and Nymph
 - Ant-Dracula GTK theme, Dracula icons/cursors, Nerd Fonts, and environment configuration for GTK/Qt apps
 - System services: NetworkManager, Bluetooth, seatd, greetd + tuigreet, user-level PipeWire services (when available)

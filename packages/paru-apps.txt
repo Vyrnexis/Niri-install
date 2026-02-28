@@ -1,3 +1,5 @@
 # Graphical applications and helpers from the AUR
 brave-bin
 greetd-tuigreet
+gtklock-playerctl-module
+satty

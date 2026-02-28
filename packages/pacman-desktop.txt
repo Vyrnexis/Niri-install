@@ -2,8 +2,13 @@
 greetd
 waybar
 wl-clipboard
+cliphist
+nwg-clipman
 xorg-xwayland
 xwayland-satellite
+wev
+wlr-randr
+kanshi
 kitty
 tumbler
 thunar
@@ -31,8 +36,11 @@ bluez-utils
 blueman
 orca
 udisks2
+udiskie
 gvfs
 gvfs-dnssd
+gvfs-goa
+gvfs-nfs
 gvfs-mtp
 gvfs-gphoto2
 gvfs-afc
@@ -41,6 +49,8 @@ libnotify
 polkit
 polkit-gnome
 gtk3
+gnome-keyring
+qt5-wayland
 qt5ct
 qt6-wayland
 lxappearance
@@ -49,6 +59,7 @@ xdg-utils
 xdg-desktop-portal
 xdg-desktop-portal-wlr
 xdg-desktop-portal-gtk
+xdg-desktop-portal-gnome
 gvfs-smb
 seatd
 gtklock
