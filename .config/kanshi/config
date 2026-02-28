@@ -1,0 +1,15 @@
+# kanshi output profiles (applied automatically on display changes)
+#
+# To activate kanshi autostart in niri, define at least one real profile block
+# (uncomment and adjust connector names).
+#
+# Example:
+# profile laptop {
+#   output eDP-1 enable mode 1920x1080 position 0,0
+# }
+#
+# Example:
+# profile docked {
+#   output eDP-1 disable
+#   output DP-1 enable mode 2560x1440 position 0,0
+# }

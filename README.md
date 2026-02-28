@@ -59,6 +59,10 @@ The installer must not be run as root; it prompts for your sudo password wheneve
 - Reboot after the script completes so greetd and the configured services start cleanly.
 - When Niri starts, custom bindings add `Super+Enter` (Kitty terminal), `Super+D` (NimLaunch), `Super+B` (Brave browser), `Super+N` (Thunar file manager), and `Mod+Shift+/` (Niri’s built-in keybinding overlay). Niri defaults remain for navigation and layout.
 - Cursor theming: the script installs Dracula cursors and writes `~/.icons/default/index.theme` so the cursor is consistent across GTK, Qt, and Wayland applications.
+- Clipboard history starts automatically via `wl-paste --watch cliphist store` (text + image). Use your preferred picker flow (`nwg-clipman` or direct `cliphist` commands).
+- `udiskie` now autostarts for removable-drive tray/mount handling.
+- `kanshi` autostarts only when `~/.config/kanshi/config` contains at least one active (uncommented) `profile` block; a template is included in the repo.
+- Screenshot annotate shortcut: `Mod+Shift+Print` captures a region and opens it in Satty.
 - Niri’s built-in keybinding overlay (`Mod+Shift+/`) is available without extra tooling.
 
 ## Troubleshooting

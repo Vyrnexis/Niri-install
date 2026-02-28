@@ -100,6 +100,10 @@ spawn-at-startup "mako"
 spawn-at-startup "blueman-applet"
 spawn-sh-at-startup "sleep 2 && nm-applet --indicator"
 spawn-sh-at-startup "~/.config/waybar/scripts/idle_toggle.sh enable"
+spawn-sh-at-startup "command -v wl-paste >/dev/null 2>&1 && command -v cliphist >/dev/null 2>&1 && wl-paste --type text --watch cliphist store"
+spawn-sh-at-startup "command -v wl-paste >/dev/null 2>&1 && command -v cliphist >/dev/null 2>&1 && wl-paste --type image --watch cliphist store"
+spawn-sh-at-startup "command -v udiskie >/dev/null 2>&1 && udiskie -t"
+spawn-sh-at-startup "command -v kanshi >/dev/null 2>&1 && [ -f \"$HOME/.config/kanshi/config\" ] && grep -Eq '^[[:space:]]*profile[[:space:]]+[^#[:space:]]+' \"$HOME/.config/kanshi/config\" && kanshi"
 
 hotkey-overlay {
     // skip-at-startup
@@ -275,6 +279,9 @@ binds {
     Mod+W { toggle-column-tabbed-display; }
 
     Print { screenshot; }
+    Mod+Shift+Print hotkey-overlay-title="Annotate Screenshot Region: Satty" {
+        spawn-sh "command -v grim >/dev/null 2>&1 && command -v slurp >/dev/null 2>&1 && command -v satty >/dev/null 2>&1 && grim -g \"$(slurp -o -r -c '#ff0000ff')\" -t ppm - | satty --filename - --fullscreen --output-filename \"$HOME/Pictures/Screenshots/satty-$(date '+%Y%m%d-%H:%M:%S').png\""
+    }
     Ctrl+Print { screenshot-screen; }
     Alt+Print { screenshot-window; }
 

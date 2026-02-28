@@ -468,18 +468,20 @@ final_summary() {
   log_info "Configuration summary:"
   cat <<'EOF'
   • greetd + tuigreet display manager enabled
-  • Niri compositor with Waybar (Dracula theme)
+  • Niri compositor with Waybar (Ant-Dracula theme)
   • Kitty terminal emulator (Dracula theme)
   • Brave browser
   • NimLaunch application launcher
   • Nymph fetch utility (auto-runs in terminal)
   • Gtklock screen locker with Dracula theme
   • Mako notification daemon (Dracula theme)
-  • GTK applications themed with Dracula
+  • GTK applications themed with Ant-Dracula
   • PipeWire audio system (modern replacement for PulseAudio)
   • Paru AUR helper installed
   • Nerd Fonts with icon support
-  • Screenshot tools (grim + slurp + swappy)
+  • Screenshot tools (grim + slurp + swappy + satty)
+  • Clipboard history collection via cliphist
+  • Removable-drive tray automounter (udiskie)
   • Audio/brightness controls configured
   • Auto-lock after 5 minutes of inactivity
   • Consistent Dracula theme across all components
@@ -497,7 +499,9 @@ EOF
   • Super + Q: Close window
   • Super + Shift + E: Exit Niri session
   • Print: Screenshot
-  • Super + Print: Area screenshot
+  • Ctrl + Print: Screenshot current display
+  • Alt + Print: Screenshot focused window
+  • Super + Shift + Print: Screenshot region and open Satty
 EOF
   log_info "Configuration lives in ~/.config"
   log_info "Use 'paru' for additional AUR packages"
