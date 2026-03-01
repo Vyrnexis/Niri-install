@@ -1,4 +1,4 @@
 # Theming and cursor packages installed via paru
 ant-dracula-theme-git
-dracula-icons-git
 dracula-cursors-git
+dracula-icons-git

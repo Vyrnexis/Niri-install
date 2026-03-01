@@ -1,10 +1,10 @@
 # PipeWire audio stack and terminal media tools
+cmus
+mpc
+mpd
+ncmpcpp
 pipewire
 pipewire-alsa
-pipewire-pulse
 pipewire-jack
+pipewire-pulse
 wireplumber
-ncmpcpp
-mpd
-mpc
-cmus

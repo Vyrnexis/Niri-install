@@ -1,12 +1,12 @@
 # Core system dependencies
 base-devel
-git
-wget
 curl
-openssh
-unzip
-rsync
-fontconfig
 desktop-file-utils
+fontconfig
+git
+openssh
+rsync
+unzip
+wget
 zsh
 zsh-autosuggestions

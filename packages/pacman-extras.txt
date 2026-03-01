@@ -1,28 +1,27 @@
 # CLI tools, documentation, and hardware helpers
-btop
-ranger
-helix
-fzf
-fd
-ripgrep
-zoxide
+7zip
 bat
+btop
 eza
-tree
-zathura
-zathura-pdf-mupdf
+fd
+fwupd
+fzf
+helix
+imagemagick
+jq
+lm_sensors
 man-db
 man-pages
-wpa_supplicant
-lm_sensors
-smartmontools
-fwupd
-jq
-# NimLaunch dependencies
+ranger
+ripgrep
 sdl2-compat
 sdl2_image
 sdl2_ttf
-# Zip Utils
-7zip
-zip
+smartmontools
+tree
 unrar
+wpa_supplicant
+zathura
+zathura-pdf-mupdf
+zip
+zoxide
