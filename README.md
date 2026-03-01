@@ -2,7 +2,7 @@
 
 ![Dracula-themed Niri desktop](Screenshot.png)
 
-This repository contains an automated installer that sets up a Dracula-themed Niri desktop environment on a freshly installed Arch Linux system. It installs core Wayland tooling, productivity utilities, fonts, and quality-of-life tweaks so you can log in and start working immediately.
+This repository contains an automated installer that sets up a Dracula-style Niri desktop environment on a freshly installed Arch Linux system. It installs core Wayland tooling, productivity utilities, fonts, and quality-of-life tweaks so you can log in and start working immediately.
 
 ## Prerequisites
 
@@ -45,10 +45,10 @@ The installer must not be run as root; it prompts for your sudo password wheneve
 ## What the Script Installs
 
 - Niri compositor, Waybar panel, gtklock/swayidle, and supporting Wayland tools (kanshi, wlr-randr, wev)
-- Kitty terminal, Thunar file manager, notification daemon (mako), screenshot utilities (grim, slurp, swappy, satty)
+- Kitty terminal, Thunar file manager, notification daemon (mako), screenshot utilities (grim, slurp, swappy)
 - PipeWire audio stack with WirePlumber session manager
 - Clipboard history tooling (`cliphist` + `nwg-clipman`), improved Qt/portal compatibility, and removable-drive helpers (`udiskie`)
-- Paru AUR helper plus theme/application packages such as Brave browser, Ant-Dracula GTK, Dracula icons/cursors, NimLaunch, and Nymph
+- Paru AUR helper plus AUR applications (`brave-bin`, `greetd-tuigreet`, `gtklock-playerctl-module`, `satty`)
 - Ant-Dracula GTK theme, Dracula icons/cursors, Nerd Fonts, and environment configuration for GTK/Qt apps
 - System services: NetworkManager, Bluetooth, seatd, greetd + tuigreet, user-level PipeWire services (when available)
 - Custom configuration files placed under `~/.config/`
@@ -57,13 +57,28 @@ The installer must not be run as root; it prompts for your sudo password wheneve
 ## Post-Install Notes
 
 - Reboot after the script completes so greetd and the configured services start cleanly.
-- When Niri starts, custom bindings add `Super+Enter` (Kitty terminal), `Super+D` (NimLaunch), `Super+B` (Brave browser), `Super+N` (Thunar file manager), and `Mod+Shift+/` (Niri’s built-in keybinding overlay). Niri defaults remain for navigation and layout.
+- Custom launcher/browser/file-manager/screenshot bindings are listed in **Custom Keybinds** below; Niri defaults remain available for navigation/layout.
 - Cursor theming: the script installs Dracula cursors and writes `~/.icons/default/index.theme` so the cursor is consistent across GTK, Qt, and Wayland applications.
 - Clipboard history starts automatically via `wl-paste --watch cliphist store` (text + image). Use your preferred picker flow (`nwg-clipman` or direct `cliphist` commands).
 - `udiskie` now autostarts for removable-drive tray/mount handling.
 - `kanshi` autostarts only when `~/.config/kanshi/config` contains at least one active (uncommented) `profile` block; a template is included in the repo.
 - Screenshot annotate shortcut: `Mod+Shift+Print` captures a region and opens it in Satty.
-- Niri’s built-in keybinding overlay (`Mod+Shift+/`) is available without extra tooling.
+
+## Custom Keybinds
+
+`Mod` is `Super` in this config.
+
+- `Mod+Return`: open Kitty terminal
+- `Mod+D`: open NimLaunch app launcher
+- `Mod+B`: open Brave browser
+- `Mod+N`: open Thunar file manager
+- `Mod+I`: lock screen (`gtklock`)
+- `Mod+Shift+Print`: screenshot region and open in Satty
+- `Mod+Shift+Slash`: show keybinding overlay
+- `Mod+Alt+S`: toggle Orca screen reader (`pkill orca || orca`)
+
+Niri default navigation/workspace/layout binds remain available.  
+For the full list, see `~/.config/niri/config.kdl`.
 
 ## Troubleshooting
 
