@@ -14,24 +14,38 @@ center = true                     # true: center window horizontally; false: use
 position_x = 20                   # X position in pixels when center=false
 position_y = 500                  # Y position in pixels when center=false
 vertical_align = "one-third"      # Only used when center=true; "top", "center", or "one-third"
+display = 0                       # Display index when center=true (0 = primary)
 
 [font]
-fontname = "MesloLGM Nerd Font Propo:size=16"       # Font name & size (e.g., "Font Family:size=N")
+fontname = "Dejavu:size=16"       # Font name & size (e.g., "Font Family:size=N")
 
 [input]
-prompt = " "                     # Prompt prefix shown before your query
-cursor = " "                     # Cursor character displayed after query text
+prompt = "> "                     # Prompt prefix shown before your query
+cursor = "_"                      # Cursor character displayed after query text
 vim_mode = false                  # true enables Vim-style modes/hjkl navigation
 
 [terminal]
-program = "kitty"                 # Terminal emulator for slash commands (/ ...)
+program = "kitty -e"        # Terminal emulator for slash commands (/ ...)
                                   # If not found, NimLaunch will fall back to a default
+
+[debug]
+input = false                     # Log key/input events to stdout
 
 [border]
 width = 2                         # Border thickness in pixels (0 = no border)
 
 [icons]
 enabled = true                    # Set to false to hide icons in the list
+
+# ==========================
+# Groups
+# ==========================
+# Define group names used by [[shortcuts]].
+# query_mode = "filter" (default) or "pass".
+
+[[groups]]
+name = "power"
+query_mode = "filter"
 
 # ==========================
 # Shortcuts
@@ -41,6 +55,9 @@ enabled = true                    # Set to false to hide icons in the list
 #   label   = text shown before your query in the results list
 #   base    = template containing optional {query} placeholder
 #   mode    = "url" (default), "shell", or "file"
+#   group   = optional group name (use "power" to list under :p)
+#   run_mode = "terminal" (default) or "spawn" for shell commands
+#   stay_open = true keeps NimLaunch open after running the action
 
 [[shortcuts]]
 prefix = ":g"
@@ -69,26 +86,34 @@ mode   = "url"
 # Power actions
 # ==========================
 # Configure system commands exposed under the `p` prefix (type `:p` in the UI).
-# `mode` accepts "spawn" (background) or "terminal" (runs inside
-# your configured terminal). `stay_open = true` keeps the launcher visible.
+# Power entries now live in [[shortcuts]] with group = "power".
 
 [power]
 prefix = ":p"           # Any prefix you write (with/without ':') maps to one trigger
 
-[[power_actions]]
-label   = "Shutdown"
-command = "systemctl poweroff"
-mode    = "spawn"
+[[shortcuts]]
+group     = "power"
+label     = "Shutdown"
+base      = "systemctl poweroff"
+mode      = "shell"
+run_mode  = "spawn"
+stay_open = false
 
-[[power_actions]]
-label   = "Reboot"
-command = "systemctl reboot"
-mode    = "spawn"
+[[shortcuts]]
+group     = "power"
+label     = "Reboot"
+base      = "systemctl reboot"
+mode      = "shell"
+run_mode  = "spawn"
+stay_open = false
 
-[[power_actions]]
-label       = "Logout"
-command     = "loginctl terminate-user $USER"
-mode        = "spawn"
+[[shortcuts]]
+group     = "power"
+label     = "Logout"
+base      = "loginctl terminate-user $USER"
+mode      = "shell"
+run_mode  = "spawn"
+stay_open = false
 
 # ==========================
 # Themes
@@ -104,6 +129,99 @@ mode        = "spawn"
 #   matchFgColorHex     = Color for matching characters in search results
 #
 # Tip: You can quickly preview themes in-app with the `t:` command.
+
+[[groups]]
+name = "ops"
+query_mode = "pass"
+
+[[shortcuts]]
+group = "ops"
+label = "journalctl (last 200, grep): "
+base = "journalctl -n 200 | rg {query}"
+mode = "shell"
+
+[[shortcuts]]
+group = "ops"
+label = "systemctl status: "
+base = "systemctl status {query}"
+mode = "shell"
+
+[[shortcuts]]
+group = "ops"
+label = "Man page search: "
+base = "https://man.archlinux.org/search?q={query}"
+mode = "url"
+
+[[groups]]
+name = "dev"
+query_mode = "pass"
+
+[[shortcuts]]
+group = "dev"
+label = "Nim docs: "
+base = "https://nim-lang.org/docs/search.html?q={query}"
+mode = "url"
+
+[[shortcuts]]
+group = "dev"
+label = "GitHub code search: "
+base = "https://github.com/search?q={query}&type=code"
+mode = "url"
+
+[[shortcuts]]
+group = "dev"
+label = "Arch Wiki: "
+base = "https://wiki.archlinux.org/index.php?search={query}"
+mode = "url"
+
+[[shortcuts]]
+prefix = ":note"
+label = "New note: "
+base = "mkdir -p ~/Notes && nvim ~/Notes/$(date +%F)-{query}.md"
+mode = "shell"
+run_mode = "spawn"
+
+[[groups]]
+name = "clip"
+query_mode = "filter"
+
+[[shortcuts]]
+group = "clip"
+label = "Copy current time"
+base = "date '+%Y-%m-%d %H:%M:%S' | wl-copy"
+mode = "shell"
+run_mode = "spawn"
+
+[[shortcuts]]
+group = "clip"
+label = "Screenshot area -> clipboard"
+base = "grim -g \"$(slurp)\" - | wl-copy"
+mode = "shell"
+run_mode = "spawn"
+
+[[shortcuts]]
+group = "clip"
+label = "Clear clipboard"
+base = "printf '' | wl-copy"
+mode = "shell"
+run_mode = "spawn"
+
+[[groups]]
+name = "proj"
+query_mode = "filter"
+
+[[shortcuts]]
+group = "proj"
+label = "NimLaunch repo"
+base = "~/Projects/GitHub/Vyrnexis/NimLaunch"
+mode = "file"
+
+[[shortcuts]]
+group = "proj"
+label = "Blog repo"
+base = "~/Projects/GitHub/Vyrnexis/vyrnexis.github.io"
+mode = "file"
+
 
 [[themes]]
 name                = "Arstotzka"   
@@ -1134,4 +1252,4 @@ matchFgColorHex     = "#ff6a38"
 
 
 [theme]
-last_chosen = "Dracula"
+last_chosen = "Catppuccin Frappe"
