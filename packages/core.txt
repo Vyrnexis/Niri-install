@@ -115,6 +115,7 @@ firefox
 helix
 imagemagick
 imv
+kitty
 mpv
 orca
 poppler-glib

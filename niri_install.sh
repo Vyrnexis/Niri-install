@@ -109,7 +109,8 @@ require_environment() {
 
   local required_path
   for required_path in \
-    .config .local packages/core.txt packages/extras.txt packages/aur.txt; do
+    .config .config/paru/paru.conf .local \
+    packages/core.txt packages/extras.txt packages/aur.txt; do
     if [[ ! -e "$SCRIPT_DIR/$required_path" ]]; then
       log_err "Required repository path is missing: $required_path"
       exit 1
@@ -217,6 +218,28 @@ install_pkg_sets() {
   done
 }
 
+# Ensure a working Rust toolchain is available before building paru.
+configure_rust_toolchain() {
+  if command -v rustup >/dev/null 2>&1; then
+    local configured_toolchains
+    configured_toolchains="$(rustup toolchain list)"
+    if [[ $configured_toolchains != *"(default)"* ]]; then
+      log_info "Installing the stable Rust toolchain"
+      rustup default stable
+    fi
+  elif command -v cargo >/dev/null 2>&1 && cargo --version >/dev/null 2>&1; then
+    return
+  else
+    log_info "Installing Rustup for the paru build"
+    install_system_packages rustup
+    rustup default stable
+  fi
+  cargo --version >/dev/null 2>&1 || {
+    log_err "cargo is unavailable after configuring Rustup."
+    return 1
+  }
+}
+
 # Build paru from its reviewed AUR package when it is not already installed.
 install_paru() {
   if command -v paru >/dev/null 2>&1; then
@@ -224,6 +247,7 @@ install_paru() {
     return
   fi
 
+  configure_rust_toolchain
   local source_dir="$BUILD_DIR/paru"
   log_info "Building paru from the AUR"
   git clone --depth 1 https://aur.archlinux.org/paru.git "$source_dir"
@@ -236,6 +260,16 @@ install_paru() {
     log_err "paru was not installed successfully."
     return 1
   }
+}
+
+# Back up and deploy Paru settings before the first AUR package operation.
+install_paru_config() {
+  local source="$SCRIPT_DIR/.config/paru/paru.conf"
+  local target="$HOME/.config/paru/paru.conf"
+
+  log_info "Installing Paru configuration"
+  backup_user_file "$target"
+  install -Dm644 "$source" "$target"
 }
 
 # Download Nymph and verify its Git blob identity before installation.
@@ -502,6 +536,7 @@ main() {
   install_pkg_sets pacman "${PACMAN_SETS[@]}"
   configure_microcode
   install_paru
+  install_paru_config
   install_pkg_sets paru "${PARU_SETS[@]}"
   install_nymph
   configure_virtualization

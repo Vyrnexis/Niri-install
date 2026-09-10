@@ -115,9 +115,10 @@ function fish_right_prompt
     end
 end
 
-# Show the system summary only in the first interactive shell.
+# Show the system summary once for each terminal process tree.
 function fish_greeting
-    if test "$SHLVL" -eq 1
+    if not set -q __nymph_greeting_shown
+        set -gx __nymph_greeting_shown 1
         if command -q nymph
             nymph
         else if command -q fastfetch

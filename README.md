@@ -64,6 +64,7 @@ Package manifests are consolidated into [`packages/core.txt`](packages/core.txt)
 - Existing user configs are preserved unless this repository owns the same path.
 - Replaced files are copied to `~/.local/state/niri-install/backups/<timestamp>/`.
 - Fish uses the repository-owned `~/.config/fish/config.fish`; an existing file at that path is backed up before replacement.
+- Paru uses the repository-owned `~/.config/paru/paru.conf`, installed before the first AUR operation. It skips the interactive PKGBUILD review while retaining package signatures, integrity checks, and unknown PGP-key confirmation.
 - The obsolete `~/.config/environment.d/10-dracula.conf` file is retired because forced toolkit backends can break XWayland and toolkit fallback.
 - An already enabled display manager is not replaced. Niri remains available through its packaged session entry.
 
@@ -108,7 +109,8 @@ In Helix, `Ctrl+E` opens Superfile as a file chooser. Run `helix-cheatsheet` or 
 
 ## Troubleshooting
 
-- `paru` is built from its AUR package after `base-devel` is installed.
+- `paru` is built from its AUR package after `base-devel` is installed. If no working Cargo toolchain exists, the installer installs Rustup and selects stable; an existing Rust or Rustup toolchain is retained.
+- PKGBUILD review is disabled by the installed Paru configuration. Use `paru --review -S <package>` when a manual review is wanted; AUR packages remain user-produced and should only be installed from trusted sources.
 - Required packages are validated before each package group is installed; stale package databases are avoided by the initial full upgrade.
 - The consolidated AUR manifest is required because it contains the selected themes as well as Brave and NimLaunch; Firefox and Fuzzel remain installed as operational fallbacks.
 - PipeWire portal and user services may not start from a bare TTY until the first graphical login; their packaged activation paths remain installed.
