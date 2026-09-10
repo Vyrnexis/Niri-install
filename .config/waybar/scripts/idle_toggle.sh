@@ -1,77 +1,75 @@
 #!/usr/bin/env bash
+
+# Toggle one installer-owned swayidle process and report its Waybar state.
+
 set -euo pipefail
 
-LOCK_CMD=(gtklock)
-if ! command -v gtklock >/dev/null 2>&1; then
-    if command -v loginctl >/dev/null 2>&1; then
-        LOCK_CMD=(loginctl lock-session)
-    else
-        echo "gtklock not found and no loginctl fallback available" >&2
-        exit 1
-    fi
-elif [[ -f /usr/share/gtklock/style.css ]]; then
-    LOCK_CMD=(gtklock -s /usr/share/gtklock/style.css)
-fi
+readonly RUNTIME_BASE="${XDG_RUNTIME_DIR:-/tmp}"
+readonly PID_FILE="$RUNTIME_BASE/niri-install-swayidle.pid"
+readonly LOCK_TIMEOUT=300
+readonly DISPLAY_TIMEOUT=360
 
-# Timeouts (seconds)
-LOCK_TIMEOUT=300
-DPMS_TIMEOUT=360
-
-IDLE_CMD=(swayidle -w \
-    timeout "$LOCK_TIMEOUT" "${LOCK_CMD[@]}" \
-    timeout "$DPMS_TIMEOUT" "niri msg action power-off-monitors" \
-    resume "niri msg action power-on-monitors" \
-    before-sleep "${LOCK_CMD[@]}")
-
-command -v swayidle >/dev/null 2>&1 || { echo "swayidle not found" >&2; exit 1; }
-
+# Return success only when the recorded swayidle process is alive.
 is_running() {
-    pgrep -x swayidle >/dev/null 2>&1
+  local pid
+  [[ -r $PID_FILE ]] || return 1
+  read -r pid < "$PID_FILE"
+  [[ $pid =~ ^[0-9]+$ ]] || return 1
+  kill -0 "$pid" 2>/dev/null
 }
 
+# Start swayidle with lock, display-power, and suspend hooks.
 start_idle() {
-    if is_running; then
-        return
-    fi
-    setsid -f "${IDLE_CMD[@]}" >/dev/null 2>&1
+  is_running && return 0
+  command -v swayidle >/dev/null 2>&1 || {
+    printf 'swayidle is not installed\n' >&2
+    return 1
+  }
+  command -v gtklock >/dev/null 2>&1 || {
+    printf 'gtklock is not installed\n' >&2
+    return 1
+  }
+
+  swayidle -w \
+    timeout "$LOCK_TIMEOUT" 'gtklock' \
+    timeout "$DISPLAY_TIMEOUT" 'niri msg action power-off-monitors' \
+    resume 'niri msg action power-on-monitors' \
+    before-sleep 'gtklock' >/dev/null 2>&1 &
+  printf '%s\n' "$!" > "$PID_FILE"
 }
 
+# Stop only the swayidle process started by this script.
 stop_idle() {
-    if ! is_running; then
-        return
-    fi
-    pkill -x swayidle >/dev/null 2>&1 || true
+  local pid
+  is_running || {
+    rm -f -- "$PID_FILE"
+    return 0
+  }
+  read -r pid < "$PID_FILE"
+  kill "$pid"
+  rm -f -- "$PID_FILE"
 }
 
+# Emit JSON describing the current idle-inhibitor state.
 print_status() {
-    if is_running; then
-        printf '{"text":"󰒲","tooltip":"Idle timers active","class":"active"}'
-    else
-        printf '{"text":"󰅶","tooltip":"Keep Awake enabled","class":"inhibited"}'
-    fi
+  if is_running; then
+    printf '{"text":"󰒲","tooltip":"Idle timers active","class":"active"}'
+  else
+    printf '{"text":"󰅶","tooltip":"Keep awake enabled","class":"inhibited"}'
+  fi
 }
 
 case "${1:-status}" in
-    status)
-        print_status
-        ;;
-    toggle)
-        if is_running; then
-            stop_idle
-        else
-            start_idle
-        fi
-        sleep 0.1
-        print_status
-        ;;
-    enable)
-        start_idle
-        ;;
-    disable)
-        stop_idle
-        ;;
-    *)
-        echo "Usage: $0 [status|toggle|enable|disable]" >&2
-        exit 1
-        ;;
+  status) print_status ;;
+  toggle)
+    if is_running; then
+      stop_idle
+    else
+      start_idle
+    fi
+    print_status
+    ;;
+  enable) start_idle ;;
+  disable) stop_idle ;;
+  *) printf 'Usage: %s [status|toggle|enable|disable]\n' "$0" >&2; exit 2 ;;
 esac

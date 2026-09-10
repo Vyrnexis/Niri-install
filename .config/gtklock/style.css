@@ -1,0 +1,22 @@
+window {
+    background-color: #282a36;
+}
+
+#clock-label {
+    color: #f8f8f2;
+    font-family: "JetBrainsMono Nerd Font";
+    font-size: 64px;
+}
+
+#date-label,
+#input-label {
+    color: #bd93f9;
+    font-family: "JetBrainsMono Nerd Font";
+}
+
+#input-field {
+    background-color: #44475a;
+    border: 2px solid #bd93f9;
+    border-radius: 8px;
+    color: #f8f8f2;
+}

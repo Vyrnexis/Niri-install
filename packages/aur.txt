@@ -1,0 +1,8 @@
+# Applications
+brave-bin
+nimlaunch-bin
+
+# GTK, icon, and cursor themes
+ant-dracula-theme-git
+dracula-cursors-git
+dracula-icons-git

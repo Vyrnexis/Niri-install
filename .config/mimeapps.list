@@ -2,9 +2,9 @@
 inode/directory=thunar.desktop
 application/pdf=org.pwmt.zathura.desktop
 text/plain=helix-kitty.desktop
-text/html=brave-browser.desktop
-x-scheme-handler/http=brave-browser.desktop
-x-scheme-handler/https=brave-browser.desktop
+text/html=brave-browser.desktop;firefox.desktop;
+x-scheme-handler/http=brave-browser.desktop;firefox.desktop;
+x-scheme-handler/https=brave-browser.desktop;firefox.desktop;
 image/jpeg=imv.desktop
 image/png=imv.desktop
 image/gif=imv.desktop

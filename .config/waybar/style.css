@@ -78,8 +78,10 @@ tooltip {
 #clock,
 #scratchpad,
 #battery,
-#pulseaudio,
+#wireplumber,
 #network,
+#cpu,
+#memory,
 #workspaces,
 #custom-launcher,
 #custom-weather,
@@ -106,12 +108,21 @@ tooltip {
   color: @orange;
 }
 
-#pulseaudio {
+#wireplumber {
   color: @blue;
 }
 
-#pulseaudio.muted {
+#wireplumber.muted {
   color: @red;
+}
+
+#network {
+  color: @green;
+}
+
+#cpu,
+#memory {
+  color: @purple;
 }
 
 #battery {
@@ -127,5 +138,5 @@ tooltip {
 }
 
 #power-profiles-daemon {
-  color: @cyan
+  color: @cyan;
 }

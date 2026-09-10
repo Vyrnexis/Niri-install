@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+
+# Display a concise Helix reference matching the installed configuration.
+set -euo pipefail
+
+use_color=true
+use_pager=true
+
+# Print command-line usage for the cheatsheet.
+usage() {
+  printf 'Usage: helix-cheatsheet [--plain] [--no-pager]\n'
+}
+
+# Send standard input through less on a terminal or directly to stdout.
+display() {
+  if [[ $use_pager == true && -t 1 ]] && command -v less >/dev/null 2>&1; then
+    LESS="${LESS:--FIX}" less -R
+  else
+    command cat
+  fi
+}
+
+while (($#)); do
+  case "$1" in
+    --plain) use_color=false ;;
+    --no-pager) use_pager=false ;;
+    -h|--help) usage; exit 0 ;;
+    *) printf 'helix-cheatsheet: unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+BOLD="" DIM="" RESET="" HEADING="" ACCENT=""
+if [[ $use_color == true && -t 1 && ${TERM:-dumb} != dumb && -z ${NO_COLOR:-} ]] \
+  && command -v tput >/dev/null 2>&1 && tput colors >/dev/null 2>&1; then
+  BOLD="$(tput bold)"
+  DIM="$(tput dim)"
+  RESET="$(tput sgr0)"
+  HEADING="$(tput setaf 6)"
+  ACCENT="$(tput setaf 2)"
+fi
+
+display <<EOF
+${BOLD}${HEADING}HELIX CONFIGURATION CHEATSHEET${RESET}
+${DIM}Search this page with /pattern, then use n and N.${RESET}
+
+${BOLD}${ACCENT}CUSTOM MAPPINGS${RESET}
+  Ctrl-s          Save in normal or insert mode
+  Ctrl-q          Quit current view
+  Ctrl-h / Ctrl-l Previous / next buffer
+  Ctrl-e          Pick a file with Superfile
+  Space e         File explorer at workspace root
+  Space E         File explorer at current buffer directory
+  X               Extend selection to the line above
+  Esc             Collapse to the primary selection
+
+${BOLD}${ACCENT}MOVEMENT AND EDITING${RESET}
+  h j k l         Move left, down, up, right
+  w / b / e       Next word, previous word, word end
+  gg / G          Start / end of file
+  0 / \$           Start / end of line
+  Ctrl-u / Ctrl-d Half-page up / down
+  i / a           Insert before / after selection
+  o / O           Open a line below / above
+  d / c           Delete / change selection
+  y / p / P       Yank / paste after / paste before
+  u / U           Undo / redo
+  > / <           Indent / unindent
+
+${BOLD}${ACCENT}SEARCH AND SELECTIONS${RESET}
+  / / ?           Search forward / backward
+  n / N           Select next / previous search match
+  * / #           Search selected word forward / backward
+  s / S           Select regex matches / split selections
+  C / Alt-C       Add a selection below / above
+  m s <char>      Surround selection
+  m r <old><new>  Replace surrounding character
+
+${BOLD}${ACCENT}FILES, WINDOWS, AND LSP${RESET}
+  Space f / F     File picker at workspace / current directory
+  Space b         Buffer picker
+  Ctrl-w v / s    Vertical / horizontal split
+  Ctrl-w h/j/k/l  Focus neighboring split
+  Space k         Hover documentation
+  g d / g r       Definition / references
+  Space r / a     Rename / code action
+  ]d / [d         Next / previous diagnostic
+
+${BOLD}${ACCENT}COMMANDS${RESET}
+  :w / :q / :wq  Write / quit / write and quit
+  :theme <name>   Change theme
+  :config-open    Edit configuration
+  :config-reload  Reload configuration
+  :tutor          Open the built-in tutorial
+EOF

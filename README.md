@@ -1,90 +1,115 @@
-# Niri Install Script
+# Niri Install
 
 ![Dracula-themed Niri desktop](Screenshot.png)
 
-This repository contains an automated installer that sets up a Dracula-style Niri desktop environment on a freshly installed Arch Linux system. It installs core Wayland tooling, productivity utilities, fonts, and quality-of-life tweaks so you can log in and start working immediately.
+An opinionated Arch Linux bootstrapper for a complete Niri workstation. It installs the compositor, desktop integration, daily applications, hardware support, Dracula configuration, and a working greetd login flow.
 
-## Prerequisites
+## Requirements
 
-Run the official Arch installer (`archinstall`) and pick these options for the smoothest run:
+- A current x86-64 Arch Linux installation
+- A regular user with `sudo` access
+- A working internet connection
+- `git` installed long enough to clone this repository
+- No partial system upgrade in progress
 
-- Profile: `minimal`
-- Audio: `pipewire`
-- Network: `NetworkManager` (or “Copy ISO network configuration” so networking works after reboot)
-- User: add a user and give it administrator privileges (sudo)
-- Additional packages: `git` (needed only to clone this repo)
-- Bootloader/filesystems: any default combination is fine; just ensure you can boot and get online
+For a minimal `archinstall` base, select NetworkManager and create an administrator user. PipeWire may be selected there or installed by this script.
 
-After installation finishes and you reboot, sign in as the regular sudo-capable user (not root) before running the script below. You need working internet for package installs.  
-For Wi‑Fi on a minimal install, pick the `NetworkManager` option in `archinstall` so `nmcli` is present, then connect after reboot:
+## Install
 
 ```bash
-nmcli device wifi list
-nmcli device wifi connect "YourSSID" password "YourPassword"
+sudo pacman -S --needed git
+git clone https://github.com/Vyrnexis/Niri-install.git
+cd Niri-install
+./niri_install.sh
 ```
 
-## Usage
+The installer performs a full `pacman -Syu` before installing packages. It prompts before making changes and leaves package-manager prompts interactive.
 
-1. If git is missing, install it and clone the repository:
+Supported options:
 
-   ```bash
-   sudo pacman -S --needed git
-   cd ~
-   git clone https://github.com/Vyrnexis/Niri-install.git
-   ```
+```text
+-y, --yes              Accept installer and package-manager prompts
+    --no-nymph         Skip the optional Nymph system-summary binary
+    --no-shell-change  Keep the current login shell
+-h, --help             Show installer help
+```
 
-2. Run the installer from inside the cloned directory:
+The equivalent environment variables are `ASSUME_YES=1`, `INSTALL_NYMPH=0`, and `CHANGE_SHELL=0`.
 
-   ```bash
-   cd Niri-install
-   ./niri_install.sh
-   ```
+The bootstrapper runs with the Bash included in the Arch base system. Fish is installed and selected as the user's login shell after configuration is complete.
 
-The installer must not be run as root; it prompts for your sudo password whenever elevated privileges are required and asks for confirmation before proceeding.
+## Installed Experience
 
-## What the Script Installs
+- Niri launched through the packaged `niri-session` wrapper
+- greetd with tuigreet, session selection, remembered user, and remembered session
+- XWayland compatibility through `xwayland-satellite`
+- GNOME and GTK desktop portals for screen sharing and file pickers
+- Waybar, Mako notifications, SwayOSD, gtklock, swayidle, and a solid-color wallpaper
+- NimLaunch from the `nimlaunch-bin` AUR package, with Fuzzel as a fallback
+- NimLaunch integrations for Niri windows, PipeWire outputs, clipboard history, screenshots, Wi-Fi, Bluetooth, calculations, services, and session actions
+- Brave from the AUR, with Firefox as an official-repository fallback
+- Thunar with archive, removable-media, network-share, phone, camera, and thumbnail support
+- PipeWire, WirePlumber, PulseAudio/JACK/ALSA compatibility, media keys, MPD, and MPRIS controls
+- NetworkManager, OpenVPN integration, Bluetooth, power profiles, and removable-drive automounting
+- Printing, network-printer discovery, scanner support, firmware tools, and CPU microcode detection
+- Kitty, Helix, Superfile, Zathura, mpv, imv, terminal utilities, Nerd Fonts, CJK fonts, and emoji fallback
+- Fish as the default login shell, with native autosuggestions, completions, FZF, Zoxide, and a Dracula prompt
+- Matching Kitty and Helix terminal cheatsheets installed under `~/.local/bin`
+- Dracula GTK, icon, cursor, terminal, editor, notification, lock-screen, and Waybar styling
 
-- Niri compositor, Waybar panel, gtklock/swayidle, and supporting Wayland tools (kanshi, wlr-randr, wev)
-- Kitty terminal, Thunar file manager, notification daemon (mako), screenshot utilities (grim, slurp, swappy)
-- PipeWire audio stack with WirePlumber session manager
-- Clipboard history tooling (`cliphist` + `nwg-clipman`), improved Qt/portal compatibility, and removable-drive helpers (`udiskie`)
-- Paru AUR helper plus AUR applications (`brave-bin`, `greetd-tuigreet`, `gtklock-playerctl-module`, `satty`)
-- Ant-Dracula GTK theme, Dracula icons/cursors, Nerd Fonts, and environment configuration for GTK/Qt apps
-- System services: NetworkManager, Bluetooth, seatd, greetd + tuigreet, user-level PipeWire services (when available)
-- Custom configuration files placed under `~/.config/`
-- Zsh installed and set as the default shell (with bash config still installed and backed up)
+Package manifests are consolidated into [`packages/core.txt`](packages/core.txt), [`packages/extras.txt`](packages/extras.txt), and [`packages/aur.txt`](packages/aur.txt). Comment headers retain the functional grouping inside each manifest. Packages promoted to the official Arch repositories, including `greetd-tuigreet`, `satty`, `gtklock`, and `swayosd`, are installed with pacman rather than paru.
 
-## Post-Install Notes
+## Configuration Safety
 
-- Reboot after the script completes so greetd and the configured services start cleanly.
-- Custom launcher/browser/file-manager/screenshot bindings are listed in **Custom Keybinds** below; Niri defaults remain available for navigation/layout.
-- Cursor theming: the script installs Dracula cursors and writes `~/.icons/default/index.theme` so the cursor is consistent across GTK, Qt, and Wayland applications.
-- Clipboard history starts automatically via `wl-paste --watch cliphist store` (text + image). Use your preferred picker flow (`nwg-clipman` or direct `cliphist` commands).
-- `udiskie` now autostarts for removable-drive tray/mount handling.
-- `kanshi` autostarts only when `~/.config/kanshi/config` contains at least one active (uncommented) `profile` block; a template is included in the repo.
-- Screenshot annotate shortcut: `Mod+Shift+Print` captures a region and opens it in Satty.
+- Existing user configs are preserved unless this repository owns the same path.
+- Replaced files are copied to `~/.local/state/niri-install/backups/<timestamp>/`.
+- Fish uses the repository-owned `~/.config/fish/config.fish`; an existing file at that path is backed up before replacement.
+- The obsolete `~/.config/environment.d/10-dracula.conf` file is retired because forced toolkit backends can break XWayland and toolkit fallback.
+- An already enabled display manager is not replaced. Niri remains available through its packaged session entry.
 
-## Custom Keybinds
+Running the installer again refreshes packages and repository-owned configuration without duplicating generated state.
 
-`Mod` is `Super` in this config.
+## Default Keybindings
 
-- `Mod+Return`: open Kitty terminal
-- `Mod+D`: open NimLaunch app launcher
-- `Mod+B`: open Brave browser
-- `Mod+N`: open Thunar file manager
-- `Mod+I`: lock screen (`gtklock`)
-- `Mod+Shift+Print`: screenshot region and open in Satty
-- `Mod+Shift+Slash`: show keybinding overlay
-- `Mod+Alt+S`: toggle Orca screen reader (`pkill orca || orca`)
+`Mod` is the Super key.
 
-Niri default navigation/workspace/layout binds remain available.  
-For the full list, see `~/.config/niri/config.kdl`.
+- `Mod+Return`: Kitty
+- `Mod+D`: NimLaunch, or Fuzzel if NimLaunch is unavailable
+- `Mod+B`: Brave, or Firefox if Brave is unavailable
+- `Mod+N`: Thunar
+- `Mod+I`: lock the session
+- `Mod+Alt+V`: clipboard history
+- `Mod+Shift+Print`: select and annotate a screenshot with Satty
+- `Mod+Shift+/`: show Niri's keybinding overlay
+- `Mod+Shift+E`: exit the Niri session
+
+The complete binding set is in [`.config/niri/config.kdl`](.config/niri/config.kdl).
+
+## NimLaunch Shortcuts
+
+- `:scripts`: Niri windows, audio outputs, clipboard history, Wi-Fi, and Bluetooth
+- `:ss`: area or full-desktop screenshots to a file or the clipboard
+- `:sys`: lock, suspend, log out, reboot, or shut down
+- `:svc <unit>`: inspect a systemd service and its journal
+- `:docs`: Nim, Go, Python, and Free Pascal documentation
+- `:cheats`: open the installed Helix or Kitty reference
+- `:places`: open common user directories
+- `:m <expression>`: calculate a result and copy it to the clipboard
+
+In Helix, `Ctrl+E` opens Superfile as a file chooser. Run `helix-cheatsheet` or `kitty-cheatsheet` in a terminal for the matching key reference.
+
+## After Installation
+
+- Reboot so the display manager, new group membership, microcode, and enabled services start cleanly.
+- Select Niri in tuigreet if a different session was remembered.
+- Set `WEATHER_LOCATION` before Waybar starts to override the default `Perth` weather location.
+- Define an active profile in `~/.config/kanshi/config` if automatic multi-monitor layouts are required.
+- Review the timestamped backup directory before removing old configurations.
 
 ## Troubleshooting
 
-- If `paru` fails to build, ensure that `base-devel` is installed (the script installs it automatically) and that you have network access.
-- Core desktop package sets and AUR theme packages are treated as required. If one is unavailable, the installer now stops instead of silently skipping it. You can bypass this with `ALLOW_PARTIAL_INSTALL=1 ./niri_install.sh`.
-- Running the script twice is safe; package groups use `--needed` and configuration syncs refresh existing files.
-- The installer backs up any existing `~/.bashrc` and `~/.zshrc` (timestamped) before installing the repository versions; adjust them afterwards if desired.
-
-Feel free to fork this repository and adjust the package selection or configuration files to match your workflow.
+- `paru` is built from its AUR package after `base-devel` is installed.
+- Required packages are validated before each package group is installed; stale package databases are avoided by the initial full upgrade.
+- The consolidated AUR manifest is required because it contains the selected themes as well as Brave and NimLaunch; Firefox and Fuzzel remain installed as operational fallbacks.
+- PipeWire portal and user services may not start from a bare TTY until the first graphical login; their packaged activation paths remain installed.
+- If another display manager is enabled, the installer reports it and does not replace it automatically.

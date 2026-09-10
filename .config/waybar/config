@@ -1,11 +1,9 @@
 // -*- mode: jsonc -*-
 {
-    // "layer": "top", // Waybar at top layer
-    "position": "top", // Waybar position (top|bottom|left|right)
-    "height": 42, // Waybar height (to be removed for auto height)
-    // "width": 1280, // Waybar width
-    "spacing": 3, // Gaps between modules (4px)
-    // Choose the order of the modules
+    "layer": "top",
+    "position": "top",
+    "height": 42,
+    "spacing": 3,
     "modules-left": [
         "custom/launcher",
         "clock",
@@ -17,8 +15,11 @@
     ],
     "modules-right": [
         "custom/idle",
+        "cpu",
+        "memory",
+        "network",
         "backlight",
-        "pulseaudio",
+        "wireplumber",
         "battery",
         "power-profiles-daemon",
         "tray"
@@ -26,9 +27,8 @@
     "custom/launcher": {
       "format": "",
       "tooltip": false,
-      "on-click": "~/.local/bin/nimlaunch"
+      "on-click": "sh -c 'command -v nimlaunch >/dev/null 2>&1 && exec nimlaunch || exec fuzzel'"
     },
-    // Modules configuration
     "niri/workspaces": {
         "disable-scroll": false,
         "all-outputs": true,
@@ -53,12 +53,8 @@
         "spacing": 10
     },
     "clock": {
-        // "timezone": "Australia/Perth",
         "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
-        // 24-hour
         "format": "{:%H·%M}",
-        // 12-hour
-        // "format": "{:%I·%M%p}",
         "format-alt": "{:%a, %b %d %Y}"
     },
     "custom/idle": {
@@ -68,23 +64,21 @@
       "interval": 3
     },
     "backlight": {
-        // "device": "acpi_video1",
         "format": "{icon} {percent}",
         "format-icons": ["󰃞", "󰃟", "󰃠"],
         "on-click": "~/.config/waybar/scripts/night-light"
     },
     "battery": {
         "states": {
-            // "good": 95,
             "warning": 30,
             "critical": 15
         },
-        "format": "{icon} {capacity}",
-        "format-full": "{icon} {capacity}",
-        "format-charging": "󰚥 {capacity}",
-        "format-plugged": "󰚥 {capacity}",
+        "format": "{icon} {capacity}%",
+        "format-full": "{icon} {capacity}%",
+        "format-charging": "󰚥 {capacity}%",
+        "format-plugged": "󰚥 {capacity}%",
         "format-icons": ["", "", "", "", ""],
-        "interval": 1
+        "interval": 30
     },
     "power-profiles-daemon": {
       "format": "{icon}",
@@ -97,20 +91,34 @@
         "power-saver": "󰌪"
       }
     },
-    "pulseaudio": {
-        // "scroll-step": 1, // %, can be a float
-        "format": "{icon} {volume}",
+    "wireplumber": {
+        "format": "{icon} {volume}%",
         "format-muted": "󰖁 Muted",
-        "format-source": "{volume}% ",
-        "format-source-muted": "",
         "format-icons": {
             "default": ["󰕿", "󰖀", "󰕾"]
         },
-        "on-click": "~/.config/waybar/scripts/volume --toggle",
-        "on-click-middle": "~/.config/waybar/scripts/volume --toggle",
-        "on-scroll-up": "~/.config/waybar/scripts/volume --up",
-        "on-scroll-down": "~/.config/waybar/scripts/volume --down",
+        "on-click": "swayosd-client --output-volume mute-toggle",
+        "on-click-middle": "swayosd-client --output-volume mute-toggle",
+        "on-scroll-up": "swayosd-client --output-volume +5 --max-volume 100",
+        "on-scroll-down": "swayosd-client --output-volume -5",
         "on-click-right": "sh -c 'command -v pavucontrol >/dev/null 2>&1 && pavucontrol'"
+    },
+    "network": {
+        "format-wifi": "󰖩 {essid}",
+        "format-ethernet": "󰈀 {ipaddr}",
+        "format-disconnected": "󰖪 Offline",
+        "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
+        "on-click": "nm-connection-editor"
+    },
+    "cpu": {
+        "format": " {usage}%",
+        "tooltip": true,
+        "interval": 5
+    },
+    "memory": {
+        "format": " {percentage}%",
+        "tooltip-format": "Memory: {used:0.1f} GiB / {total:0.1f} GiB",
+        "interval": 5
     },
     "custom/weather": {
         "exec": "~/.config/waybar/scripts/weather.sh -o",

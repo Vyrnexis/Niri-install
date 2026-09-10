@@ -1,551 +1,521 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Automated Niri desktop bootstrapper for minimal Arch installs.
-# Lays down required packages, theming, and user configuration.
+# Bootstrap a complete Dracula-themed Niri desktop on a minimal Arch install.
+# Install official packages first, then AUR packages, configs, and services.
 
-set -euo pipefail
+set -Eeuo pipefail
 IFS=$'\n\t'
+umask 022
 
-# --- palette (16-color friendly) ------------------------------------------
-PURPLE=$'\033[95m'   # bright magenta
-GREEN=$'\033[32m'
-YELLOW=$'\033[33m'
-RED=$'\033[31m'
-NC=$'\033[0m'
+readonly PURPLE=$'\033[95m'
+readonly GREEN=$'\033[32m'
+readonly YELLOW=$'\033[33m'
+readonly RED=$'\033[31m'
+readonly NC=$'\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly TARGET_BASHRC="$HOME/.bashrc"
-readonly REPO_BASHRC="$SCRIPT_DIR/.bashrc"
-readonly TARGET_ZSHRC="$HOME/.zshrc"
-readonly REPO_ZSHRC="$SCRIPT_DIR/.zshrc"
+readonly SCRIPT_DIR
+RUN_STAMP="$(date +%Y%m%d-%H%M%S)"
+readonly RUN_STAMP
+readonly BACKUP_ROOT="$HOME/.local/state/niri-install/backups/$RUN_STAMP"
+BUILD_DIR=""
+ASSUME_YES="${ASSUME_YES:-0}"
+INSTALL_NYMPH="${INSTALL_NYMPH:-1}"
+CHANGE_SHELL="${CHANGE_SHELL:-1}"
 
-PACMAN_SETS=(
-  "packages/pacman-core.txt|Core system packages|required"
-  "packages/pacman-desktop.txt|Desktop environment packages|required"
-  "packages/pacman-audio.txt|PipeWire audio stack|required"
-  "packages/pacman-fonts.txt|Font packages|required"
-  "packages/pacman-extras.txt|CLI utilities and extras|optional"
+readonly -a PACMAN_SETS=(
+  "packages/core.txt|Core Niri workstation packages|required"
+  "packages/extras.txt|Optional utilities and diagnostics|optional"
 )
 
-PARU_SETS=(
-  "packages/paru-apps.txt|AUR applications|optional"
-  "packages/paru-themes.txt|AUR theming packages|required"
+readonly -a PARU_SETS=(
+  "packages/aur.txt|AUR applications and Dracula themes|required"
 )
 
-# --- logging helpers ------------------------------------------------------
-log_info()   { printf '%b[INFO]%b %s\n'    "${PURPLE}" "${NC}" "$1"; }
-log_ok()     { printf '%b[SUCCESS]%b %s\n' "${GREEN}"  "${NC}" "$1"; }
-log_warn()   { printf '%b[WARNING]%b %s\n' "${YELLOW}" "${NC}" "$1"; }
-log_err()    { printf '%b[ERROR]%b %s\n'   "${RED}"    "${NC}" "$1"; }
+# Print an informational installer message.
+log_info() { printf '%b[INFO]%b %s\n' "$PURPLE" "$NC" "$1"; }
 
+# Print a successful operation message.
+log_ok() { printf '%b[OK]%b %s\n' "$GREEN" "$NC" "$1"; }
+
+# Print a non-fatal warning message.
+log_warn() { printf '%b[WARN]%b %s\n' "$YELLOW" "$NC" "$1"; }
+
+# Print an error message to standard error.
+log_err() { printf '%b[ERROR]%b %s\n' "$RED" "$NC" "$1" >&2; }
+
+# Display the installer name without clearing terminal history.
 show_banner() {
-  if command -v clear >/dev/null 2>&1; then
-    clear
-  else
-    printf '\033c'
-  fi
-  local -r banner="$(cat <<'EOF'
-███╗   ██╗██╗██████╗ ██╗      ██╗███╗   ██╗███████╗████████╗ █████╗ ██╗     ██╗     
-████╗  ██║██║██╔══██╗██║      ██║████╗  ██║██╔════╝╚══██╔══╝██╔══██╗██║     ██║     
-██╔██╗ ██║██║██████╔╝██║█████╗██║██╔██╗ ██║███████╗   ██║   ███████║██║     ██║     
-██║╚██╗██║██║██╔══██╗██║╚════╝██║██║╚██╗██║╚════██║   ██║   ██╔══██║██║     ██║     
-██║ ╚████║██║██║  ██║██║      ██║██║ ╚████║███████║   ██║   ██║  ██║███████╗███████╗
-╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═╝      ╚═╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝
-EOF
-)"
-  printf '%b%s%b\n' "${PURPLE}" "$banner" "${NC}"
+  printf '%bNiri Desktop Installer%b\n' "$PURPLE" "$NC"
 }
 
-# --- sanity checks --------------------------------------------------------
+# Print supported command-line options.
+show_help() {
+  cat <<'EOF'
+Usage: ./niri_install.sh [options]
+
+Options:
+  -y, --yes              Accept installer and package-manager prompts
+      --no-nymph         Skip the optional Nymph system-summary binary
+      --no-shell-change  Keep the current login shell
+  -h, --help             Show this help text
+
+Environment equivalents:
+  ASSUME_YES=1 INSTALL_NYMPH=0 CHANGE_SHELL=0
+EOF
+}
+
+# Parse installer flags and reject unknown arguments.
+parse_args() {
+  while (($#)); do
+    case "$1" in
+      -y|--yes) ASSUME_YES=1 ;;
+      --no-nymph) INSTALL_NYMPH=0 ;;
+      --no-shell-change) CHANGE_SHELL=0 ;;
+      -h|--help) show_help; exit 0 ;;
+      *) log_err "Unknown option: $1"; show_help >&2; exit 2 ;;
+    esac
+    shift
+  done
+}
+
+# Remove only the installer-owned temporary build directory.
+cleanup() {
+  if [[ -n $BUILD_DIR && $BUILD_DIR == "$SCRIPT_DIR/.build/"* ]]; then
+    rm -rf -- "$BUILD_DIR"
+  fi
+}
+
+# Report the command and line that caused an unexpected failure.
+report_error() {
+  local exit_code="$1" line="$2" command="$3"
+  log_err "Command failed with status $exit_code at line $line: $command"
+}
+
+# Verify the host, privileges, connectivity tools, and repository layout.
 require_environment() {
   if [[ $EUID -eq 0 ]]; then
     log_err "Run as a regular user with sudo access, not root."
     exit 1
   fi
-  if ! command -v pacman >/dev/null 2>&1; then
-    log_err "pacman not found. This script targets Arch Linux."
+  if [[ ! -r /etc/arch-release ]] || ! command -v pacman >/dev/null 2>&1; then
+    log_err "This installer supports Arch Linux only."
+    exit 1
+  fi
+  if ! command -v sudo >/dev/null 2>&1; then
+    log_err "sudo is required."
+    exit 1
+  fi
+
+  local required_path
+  for required_path in \
+    .config .local packages/core.txt packages/extras.txt packages/aur.txt; do
+    if [[ ! -e "$SCRIPT_DIR/$required_path" ]]; then
+      log_err "Required repository path is missing: $required_path"
+      exit 1
+    fi
+  done
+
+  local duplicates
+  duplicates="$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' \
+    "$SCRIPT_DIR/packages/core.txt" "$SCRIPT_DIR/packages/extras.txt" \
+    "$SCRIPT_DIR/packages/aur.txt" | sort | uniq -d)"
+  if [[ -n $duplicates ]]; then
+    log_err "Duplicate official packages found: ${duplicates//$'\n'/, }"
     exit 1
   fi
 }
 
+# Ask once before applying system and home-directory changes.
 confirm_run() {
+  if [[ $ASSUME_YES == 1 ]]; then
+    log_warn "Automatic confirmation enabled."
+    return
+  fi
   if [[ ! -t 0 ]]; then
-    if [[ ${ASSUME_YES:-0} == 1 ]]; then
-      log_warn "Non-interactive session with ASSUME_YES=1; continuing without prompt."
-      return
-    fi
-    log_err "Non-interactive session. Re-run with ASSUME_YES=1 to allow upgrades."
+    log_err "Non-interactive use requires --yes or ASSUME_YES=1."
     exit 1
   fi
 
-  while true; do
-    read -r -p "Proceed with Niri installation? [Y/n]: " reply || {
-      log_warn "No input received; aborting."
-      exit 0
-    }
-    case ${reply} in
-      [Yy]*|"") return ;;
-      [Nn]*) log_warn "Installation cancelled."; exit 0 ;;
-      *) log_warn "Please answer y or n." ;;
-    esac
-  done
-}
-
-# --- package helpers ------------------------------------------------------
-read_pkg_file() {
-  local file="$1"
-  if [[ ! -f $file ]]; then
-    log_err "Package list '$file' not found."
-    exit 1
-  fi
-  sed -e 's/#.*//' -e 's/^[ \t]*//' -e 's/[ \t]*$//' "$file" | awk 'NF'
-}
-
-install_pkg_set() {
-  local manager="$1" file="$2" label="$3" required="${4:-optional}"
-  local pkgs
-  mapfile -t pkgs < <(read_pkg_file "$file")
-  if ((${#pkgs[@]} == 0)); then
-    log_warn "No packages defined in $file; skipping."
-    return
-  fi
-  local available=() missing=() pkg
-  for pkg in "${pkgs[@]}"; do
-    if "$manager" -Si "$pkg" >/dev/null 2>&1; then
-      available+=("$pkg")
-    else
-      missing+=("$pkg")
-    fi
-  done
-  if ((${#missing[@]})); then
-    if [[ $required == required && ${ALLOW_PARTIAL_INSTALL:-0} != 1 ]]; then
-      log_err "Required package set has unavailable packages ($manager): ${missing[*]}"
-      log_err "Fix package names or re-run with ALLOW_PARTIAL_INSTALL=1 to continue."
-      exit 1
-    fi
-    log_warn "Skipping unavailable packages ($manager): ${missing[*]}"
-  fi
-  if ((${#available[@]} == 0)); then
-    if [[ $required == required && ${ALLOW_PARTIAL_INSTALL:-0} != 1 ]]; then
-      log_err "Required package set has no installable packages: $file"
-      log_err "Fix package sources or re-run with ALLOW_PARTIAL_INSTALL=1 to continue."
-      exit 1
-    fi
-    log_warn "No installable packages in $file; skipping."
-    return
-  fi
-  log_info "$label"
-  if [[ $manager == pacman ]]; then
-    sudo pacman -S --noconfirm --needed "${available[@]}"
-  else
-    paru -S --noconfirm --needed --skipreview "${available[@]}"
-  fi
-}
-
-install_pkg_sets() {
-  local manager="$1"; shift
-  local entry file label required
-  for entry in "$@"; do
-    IFS='|' read -r file label required <<< "$entry"
-    install_pkg_set "$manager" "$SCRIPT_DIR/$file" "$label" "${required:-optional}"
-  done
-}
-
-# --- tooling installs -----------------------------------------------------
-install_paru() {
-  if command -v paru >/dev/null 2>&1; then
-    log_warn "paru already installed; skipping build."
-    return
-  fi
-
-  log_info "Installing paru AUR helper"
-  if pacman -Si paru >/dev/null 2>&1 && sudo pacman -S --noconfirm --needed paru; then
-    return
-  fi
-  log_warn "Repository install failed; building from AUR."
-
-  local tmpdir
-  tmpdir="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir"; trap - RETURN' RETURN
-  log_info "Cloning paru into $tmpdir"
-  if ! git clone https://aur.archlinux.org/paru.git "$tmpdir"; then
-    log_err "Failed to clone paru repository."
-    exit 1
-  fi
-  (cd "$tmpdir" && makepkg -si --noconfirm)
-
-  if ! command -v paru >/dev/null 2>&1; then
-    log_err "paru installation failed."
-    exit 1
-  fi
-}
-
-install_local_bin() {
-  local repo="$1" binary="$2" post="${3:-}"
-  local tmpdir
-  tmpdir="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir"; trap - RETURN' RETURN
-  log_info "Cloning ${repo##*/}"
-  if ! git clone "$repo" "$tmpdir"; then
-    log_err "Failed to clone ${repo##*/}."
-    exit 1
-  fi
-  local src="$tmpdir/bin/$binary"
-  if [[ ! -f $src ]]; then
-    log_err "Binary $binary not found in cloned repository."
-    exit 1
-  fi
-  mkdir -p "$HOME/.local/bin"
-  install -Dm755 "$src" "$HOME/.local/bin/$binary"
-  if [[ -n $post ]]; then
-    if ! (cd "$tmpdir" && eval "$post"); then
-      log_err "Post-install for ${repo##*/} failed."
-      exit 1
-    fi
-  fi
-}
-
-# --- theming --------------------------------------------------------------
-run_gsettings() {
-  command -v gsettings >/dev/null 2>&1 || return 1
-  if command -v dbus-run-session >/dev/null 2>&1; then
-    dbus-run-session -- gsettings "$@"
-  else
-    gsettings "$@"
-  fi
-}
-
-apply_theme() {
-  command -v gsettings >/dev/null 2>&1 || {
-    log_warn "gsettings unavailable; skipping GTK theme sync."
-    return
-  }
-
-  local failed=0
-  local setting schema key value
-  local settings=(
-    "org.gnome.desktop.interface|gtk-theme|Ant-Dracula"
-    "org.gnome.desktop.interface|icon-theme|Dracula"
-    "org.gnome.desktop.interface|color-scheme|prefer-dark"
-    "org.gnome.desktop.interface|cursor-theme|Dracula-cursors"
-    "org.gnome.desktop.interface|font-name|JetBrainsMono Nerd Font 11"
-    "org.gnome.desktop.wm.preferences|theme|Ant-Dracula"
-  )
-  for setting in "${settings[@]}"; do
-    IFS='|' read -r schema key value <<< "$setting"
-    run_gsettings set "$schema" "$key" "$value" || failed=1
-  done
-
-  if ((failed)); then
-    log_warn "Could not apply all theme settings; continue manually if needed."
-  else
-    log_info "Applied GTK/icon/cursor theme via gsettings."
-  fi
-}
-
-write_theme_env() {
-  local env_dir="$HOME/.config/environment.d"
-  mkdir -p "$env_dir"
-  local env_vars=(
-    "GTK_THEME=Ant-Dracula"
-    "XCURSOR_THEME=Dracula-cursors"
-    "XCURSOR_SIZE=24"
-    "QT_QPA_PLATFORMTHEME=gtk3"
-    "GTK_USE_PORTAL=1"
-    "XDG_CURRENT_DESKTOP=niri"
-    "XDG_SESSION_DESKTOP=niri"
-    "XDG_SESSION_TYPE=wayland"
-    "QT_QPA_PLATFORM=wayland"
-    "SDL_VIDEODRIVER=wayland"
-    "CLUTTER_BACKEND=wayland"
-    "MOZ_ENABLE_WAYLAND=1"
-  )
-
-  printf '%s\n' "${env_vars[@]}" > "$env_dir/10-dracula.conf"
-
-  local env_names=()
-  local pair name
-  for pair in "${env_vars[@]}"; do
-    name="${pair%%=*}"
-    env_names+=("$name")
-    export "$pair"
-  done
-
-  if command -v systemctl >/dev/null 2>&1; then
-    systemctl --user import-environment "${env_names[@]}" >/dev/null 2>&1 || true
-  fi
-
-  if command -v dbus-update-activation-environment >/dev/null 2>&1; then
-    dbus-update-activation-environment "${env_vars[@]}" >/dev/null 2>&1 || true
-  fi
-}
-
-# --- display manager ------------------------------------------------------
-configure_greetd() {
-  log_info "Configuring greetd + tuigreet"
-  sudo install -d -m 755 /etc/greetd
-  sudo tee /etc/greetd/config.toml > /dev/null <<'EOF'
-[terminal]
-vt = 1
-
-[default_session]
-command = "tuigreet --time --remember --user-menu --cmd 'dbus-run-session niri'"
-user = "greeter"
-EOF
-}
-
-# --- configuration --------------------------------------------------------
-configure_virtualization() {
-  log_info "Detecting virtualization..."
-  local virt="unknown"
-  if command -v systemd-detect-virt >/dev/null 2>&1; then
-    virt=$(systemd-detect-virt 2>/dev/null || echo "unknown")
-  else
-    log_warn "systemd-detect-virt not available; skipping guest utils install."
-    return
-  fi
-  case "$virt" in
-    oracle)
-      log_info "VirtualBox detected; installing guest utils."
-      sudo pacman -S --noconfirm --needed virtualbox-guest-utils
-      sudo systemctl enable --now vboxservice
-      ;;
-    vmware)
-      log_info "VMware detected; installing open-vm-tools."
-      sudo pacman -S --noconfirm --needed open-vm-tools
-      sudo systemctl enable --now vmtoolsd.service
-      ;;
-    qemu|kvm)
-      log_info "QEMU/KVM detected; installing guest agents."
-      sudo pacman -S --noconfirm --needed qemu-guest-agent spice-vdagent
-      sudo systemctl enable --now qemu-guest-agent.service
-      ;;
-    none)
-      log_info "Bare metal detected; no guest utilities required."
-      ;;
-    *)
-      log_warn "Virtualization type '$virt' unsupported for automatic helpers."
-      ;;
+  local reply
+  read -r -p "Install and configure the complete Niri desktop? [Y/n]: " reply || exit 1
+  case "$reply" in
+    ""|[Yy]*) ;;
+    [Nn]*) log_warn "Installation cancelled."; exit 0 ;;
+    *) log_err "Please answer y or n."; exit 2 ;;
   esac
 }
 
-sync_configs() {
-  log_info "Preparing config directories"
-  mkdir -p "$HOME/.config" "$HOME/.config/gtk-4.0" ~/.themes ~/.icons ~/.config/environment.d
+# Create a workspace-local directory for temporary build artifacts.
+prepare_build_dir() {
+  mkdir -p "$SCRIPT_DIR/.build"
+  BUILD_DIR="$(mktemp -d "$SCRIPT_DIR/.build/run.XXXXXX")"
+  trap cleanup EXIT
+  trap 'report_error "$?" "$LINENO" "$BASH_COMMAND"' ERR
+}
 
-  log_info "Setting Dracula cursor theme as default"
+# Read package names while ignoring comments and blank lines.
+read_pkg_file() {
+  local file="$1"
+  if [[ ! -f $file ]]; then
+    log_err "Package list not found: $file"
+    return 1
+  fi
+  sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+    -e '/^$/d' "$file"
+}
+
+# Install one validated package set with pacman or paru.
+install_pkg_set() {
+  local manager="$1" file="$2" label="$3" importance="$4"
+  local -a packages=() available=() unavailable=() command_args=()
+  local package
+  mapfile -t packages < <(read_pkg_file "$file")
+
+  for package in "${packages[@]}"; do
+    if "$manager" -Si "$package" >/dev/null 2>&1; then
+      available+=("$package")
+    else
+      unavailable+=("$package")
+    fi
+  done
+
+  if ((${#unavailable[@]})); then
+    if [[ $importance == required ]]; then
+      log_err "Unavailable required packages from $file: ${unavailable[*]}"
+      return 1
+    fi
+    log_warn "Skipping unavailable optional packages: ${unavailable[*]}"
+  fi
+  ((${#available[@]})) || return 0
+
+  log_info "$label"
+  command_args=(-S --needed)
+  [[ $ASSUME_YES == 1 ]] && command_args+=(--noconfirm)
+  if [[ $manager == pacman ]]; then
+    sudo pacman "${command_args[@]}" "${available[@]}"
+  else
+    paru "${command_args[@]}" "${available[@]}"
+  fi
+}
+
+# Install explicit system packages with consistent confirmation behavior.
+install_system_packages() {
+  local -a command_args=(-S --needed)
+  [[ $ASSUME_YES == 1 ]] && command_args+=(--noconfirm)
+  sudo pacman "${command_args[@]}" "$@"
+}
+
+# Install each package set described by a manager-specific manifest.
+install_pkg_sets() {
+  local manager="$1"
+  shift
+  local entry file label importance
+  for entry in "$@"; do
+    IFS='|' read -r file label importance <<< "$entry"
+    install_pkg_set "$manager" "$SCRIPT_DIR/$file" "$label" "$importance"
+  done
+}
+
+# Build paru from its reviewed AUR package when it is not already installed.
+install_paru() {
+  if command -v paru >/dev/null 2>&1; then
+    log_info "paru is already installed."
+    return
+  fi
+
+  local source_dir="$BUILD_DIR/paru"
+  log_info "Building paru from the AUR"
+  git clone --depth 1 https://aur.archlinux.org/paru.git "$source_dir"
+  if [[ $ASSUME_YES == 1 ]]; then
+    (cd "$source_dir" && makepkg -si --needed --noconfirm)
+  else
+    (cd "$source_dir" && makepkg -si --needed)
+  fi
+  command -v paru >/dev/null 2>&1 || {
+    log_err "paru was not installed successfully."
+    return 1
+  }
+}
+
+# Download Nymph and verify its Git blob identity before installation.
+install_nymph() {
+  [[ $INSTALL_NYMPH == 1 ]] || {
+    log_info "Skipping Nymph by request."
+    return
+  }
+
+  local api_url="https://api.github.com/repos/Vyrnexis/Nymph/contents/bin/nymph"
+  local metadata download_url expected_sha binary actual_sha
+  metadata="$(curl -fsSL --retry 3 --connect-timeout 10 "$api_url")" || {
+    log_warn "Could not retrieve Nymph metadata; continuing without it."
+    return
+  }
+  download_url="$(jq -r '.download_url // empty' <<< "$metadata")"
+  expected_sha="$(jq -r '.sha // empty' <<< "$metadata")"
+  binary="$BUILD_DIR/nymph"
+
+  if [[ -z $download_url || -z $expected_sha ]] || \
+     ! curl -fsSL --retry 3 --connect-timeout 10 "$download_url" -o "$binary"; then
+    log_warn "Could not download Nymph; continuing without it."
+    return
+  fi
+  actual_sha="$(git hash-object "$binary")"
+  if [[ $actual_sha != "$expected_sha" ]]; then
+    log_warn "Nymph integrity verification failed; continuing without it."
+    return
+  fi
+
+  install -Dm755 "$binary" "$HOME/.local/bin/nymph"
+  log_ok "Installed verified Nymph binary."
+}
+
+# Apply GTK, icon, cursor, color-scheme, and font preferences.
+apply_theme() {
+  if ! command -v gsettings >/dev/null 2>&1; then
+    log_warn "gsettings is unavailable; static GTK settings remain installed."
+    return
+  fi
+
+  local -a settings=(
+    "org.gnome.desktop.interface|gtk-theme|Ant-Dracula"
+    "org.gnome.desktop.interface|icon-theme|Dracula"
+    "org.gnome.desktop.interface|cursor-theme|Dracula-cursors"
+    "org.gnome.desktop.interface|color-scheme|prefer-dark"
+    "org.gnome.desktop.interface|font-name|JetBrainsMono Nerd Font 11"
+  )
+  local setting schema key value
+  for setting in "${settings[@]}"; do
+    IFS='|' read -r schema key value <<< "$setting"
+    if ! gsettings set "$schema" "$key" "$value" 2>/dev/null; then
+      dbus-run-session -- gsettings set "$schema" "$key" "$value" || \
+        log_warn "Could not set $schema $key."
+    fi
+  done
+}
+
+# Back up and deploy repository-owned user configuration files.
+sync_configs() {
+  log_info "Installing user configuration"
+  mkdir -p "$HOME/.config" "$HOME/.local/share" "$BACKUP_ROOT"
+
+  local legacy_environment="$HOME/.config/environment.d/10-dracula.conf"
+  if [[ -f $legacy_environment ]]; then
+    mkdir -p "$BACKUP_ROOT/environment.d"
+    mv "$legacy_environment" "$BACKUP_ROOT/environment.d/10-dracula.conf"
+    log_info "Retired the legacy forced-Wayland environment file."
+  fi
+
+  rsync -a --backup --backup-dir="$BACKUP_ROOT/config" \
+    --exclude '.gitkeep' "$SCRIPT_DIR/.config/" "$HOME/.config/"
+  rsync -a --backup --backup-dir="$BACKUP_ROOT/local-share" \
+    "$SCRIPT_DIR/.local/share/" "$HOME/.local/share/"
+  rsync -a --backup --backup-dir="$BACKUP_ROOT/local-bin" \
+    "$SCRIPT_DIR/.local/bin/" "$HOME/.local/bin/"
+
+  if [[ -f $HOME/.config/gtklock/config.ini ]]; then
+    sed -i "s|^style=.*|style=$HOME/.config/gtklock/style.css|" \
+      "$HOME/.config/gtklock/config.ini"
+  fi
+
   mkdir -p "$HOME/.icons/default"
-  cat > "$HOME/.icons/default/index.theme" <<'EOF'
+  backup_user_file "$HOME/.icons/default/index.theme"
+  install -Dm644 /dev/stdin "$HOME/.icons/default/index.theme" <<'EOF'
 [Icon Theme]
 Name=Default
 Comment=Default cursor theme
 Inherits=Dracula-cursors
 EOF
 
-  log_info "Syncing repository configs to ~/.config"
-  rsync -a --exclude '.gitkeep' "$SCRIPT_DIR/.config/" "$HOME/.config/"
-
-  if [[ -d "$HOME/.config/waybar/scripts" ]]; then
-    chmod +x "$HOME/.config/waybar/scripts/"* || true
+  if [[ -d $HOME/.config/waybar/scripts ]]; then
+    chmod +x "$HOME/.config/waybar/scripts/"*
   fi
-
-  if command -v mpd >/dev/null 2>&1; then
-    mkdir -p "$HOME/.config/mpd" "$HOME/.local/share/mpd/playlists"
+  if [[ -d $HOME/.config/nimlaunch/scripts ]]; then
+    chmod +x "$HOME/.config/nimlaunch/scripts/"*.sh
   fi
-
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/share/mpd/playlists"
+  chmod +x "$HOME/.local/bin/helix-cheatsheet" "$HOME/.local/bin/kitty-cheatsheet"
+  xdg-user-dirs-update
+  mkdir -p "$HOME/Pictures/Screenshots" "$HOME/Music" "$HOME/Projects"
   apply_theme
-  write_theme_env
-}
 
-install_desktop_entries() {
-  log_info "Installing desktop entries"
-  install -Dm644 "$SCRIPT_DIR/.local/share/applications/helix-kitty.desktop" \
-    "$HOME/.local/share/applications/helix-kitty.desktop"
-  sed -i "s|^Icon=.*|Icon=$HOME/.local/share/icons/hicolor/scalable/apps/helix.svg|" \
-    "$HOME/.local/share/applications/helix-kitty.desktop"
-  install -Dm644 "$SCRIPT_DIR/.local/share/applications/thunar.desktop" \
-    "$HOME/.local/share/applications/thunar.desktop"
-  install -Dm644 "$SCRIPT_DIR/.local/share/icons/hicolor/scalable/apps/helix.svg" \
-    "$HOME/.local/share/icons/hicolor/scalable/apps/helix.svg"
   if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$HOME/.local/share/applications" || true
   fi
 }
 
+# Back up a user file before the installer appends managed content.
+backup_user_file() {
+  local target="$1"
+  [[ -e $target ]] || return 0
+  local relative="${target#"$HOME"/}"
+  mkdir -p "$BACKUP_ROOT/$(dirname "$relative")"
+  cp -aL "$target" "$BACKUP_ROOT/$relative"
+}
+
+# Set Fish as the login shell unless the user opted out.
+set_default_shell() {
+  [[ $CHANGE_SHELL == 1 ]] || {
+    log_info "Keeping the current login shell by request."
+    return
+  }
+  local fish_path current_shell
+  fish_path="$(command -v fish)"
+  current_shell="$(getent passwd "$USER" | cut -d: -f7)"
+  if [[ $current_shell == "$fish_path" ]]; then
+    log_info "Fish is already the login shell."
+  elif ! sudo chsh -s "$fish_path" "$USER"; then
+    log_warn "Could not change the login shell; run: sudo chsh -s $fish_path $USER"
+  fi
+}
+
+# Install a modern tuigreet command unless another display manager owns the alias.
+configure_greetd() {
+  local display_manager="/etc/systemd/system/display-manager.service"
+  local current_target=""
+  if [[ -L $display_manager ]]; then
+    current_target="$(readlink -f "$display_manager")"
+  fi
+  if [[ -n $current_target && $current_target != */greetd.service ]]; then
+    log_warn "Another display manager is enabled: $current_target"
+    log_warn "Niri is installed as a selectable session; greetd was not enabled."
+    return
+  fi
+
+  log_info "Configuring greetd with niri-session"
+  if sudo test -f /etc/greetd/config.toml; then
+    sudo cp -a /etc/greetd/config.toml \
+      "/etc/greetd/config.toml.pre-niri-install.$RUN_STAMP"
+  fi
+  sudo install -d -m 755 /etc/greetd
+  sudo install -Dm644 /dev/stdin /etc/greetd/config.toml <<'EOF'
+[terminal]
+vt = 1
+
+[default_session]
+command = "tuigreet --time --remember --remember-session --user-menu --cmd niri-session"
+user = "greeter"
+EOF
+  sudo systemctl enable greetd.service
+}
+
+# Enable system services needed for networking, hardware, and desktop integration.
 enable_services() {
   log_info "Enabling system services"
-  sudo systemctl enable --now NetworkManager
-  sudo systemctl enable --now bluetooth
-  sudo systemctl enable --now seatd
-  sudo systemctl enable greetd
-  log_warn "greetd enabled; it will start at boot."
+  sudo systemctl enable --now NetworkManager.service
+  sudo systemctl enable --now bluetooth.service
+  sudo systemctl enable --now avahi-daemon.service
+  sudo systemctl enable --now cups.socket
+  sudo systemctl enable --now power-profiles-daemon.service
+  sudo systemctl enable --now fstrim.timer
 
-  log_info "Enabling PipeWire user services"
+  if systemctl cat fwupd-refresh.timer >/dev/null 2>&1; then
+    sudo systemctl enable --now fwupd-refresh.timer
+  fi
+
   if systemctl --user list-unit-files >/dev/null 2>&1; then
-    systemctl --user enable --now pipewire.service
-    systemctl --user enable --now pipewire-pulse.service
+    systemctl --user enable --now pipewire.socket pipewire-pulse.socket
     systemctl --user enable --now wireplumber.service
-    if command -v mpd >/dev/null 2>&1; then
-      systemctl --user enable --now mpd.service || log_warn "Could not enable mpd.service for user."
-    fi
+    systemctl --user enable --now mpd.service || \
+      log_warn "Could not enable the optional MPD user service."
   else
-    log_warn "systemd --user not available; skipping PipeWire enablement."
+    log_warn "No systemd user session is available; user services will start after login."
   fi
 }
 
+# Install the CPU vendor's microcode package for early firmware updates.
+configure_microcode() {
+  local vendor
+  vendor="$(awk -F: '/vendor_id/ {gsub(/[[:space:]]/, "", $2); print $2; exit}' /proc/cpuinfo)"
+  case "$vendor" in
+    GenuineIntel) install_system_packages intel-ucode ;;
+    AuthenticAMD) install_system_packages amd-ucode ;;
+    *) log_warn "Could not identify an Intel or AMD CPU for microcode installation." ;;
+  esac
+}
+
+# Grant the video-group access used by brightness-control udev rules.
 ensure_user_groups() {
-  log_info "Adding user to video/audio/input groups"
-  sudo usermod -aG video,audio,input,seat "$USER"
-}
-
-ensure_niri_desktop_entry() {
-  log_info "Ensuring niri.desktop exists"
-  if [[ -f /usr/share/wayland-sessions/niri.desktop ]]; then
-    log_info "Existing niri.desktop found."
-    return
-  fi
-  log_warn "niri.desktop missing; creating minimal entry."
-  sudo tee /usr/share/wayland-sessions/niri.desktop > /dev/null <<'EOF'
-[Desktop Entry]
-Name=Niri
-Comment=Dynamic Wayland tiling compositor
-Exec=niri
-TryExec=niri
-Type=Application
-EOF
-}
-
-install_bashrc() {
-  if [[ ! -f $REPO_BASHRC ]]; then
-    log_err "Repository .bashrc missing at $REPO_BASHRC"
-    exit 1
-  fi
-  local backup="$TARGET_BASHRC.pre-niri-install.$(date +%Y%m%d%H%M%S)"
-  if [[ -e $TARGET_BASHRC ]]; then
-    log_warn "Backing up existing ~/.bashrc to ${backup/#$HOME/~}"
-    cp -L "$TARGET_BASHRC" "$backup"
-  fi
-  install -Dm644 "$REPO_BASHRC" "$TARGET_BASHRC"
-  log_info "Installed repository .bashrc"
-}
-
-install_zshrc() {
-  if [[ ! -f $REPO_ZSHRC ]]; then
-    log_err "Repository .zshrc missing at $REPO_ZSHRC"
-    exit 1
-  fi
-  local backup="$TARGET_ZSHRC.pre-niri-install.$(date +%Y%m%d%H%M%S)"
-  if [[ -e $TARGET_ZSHRC ]]; then
-    log_warn "Backing up existing ~/.zshrc to ${backup/#$HOME/~}"
-    cp -L "$TARGET_ZSHRC" "$backup"
-  fi
-  install -Dm644 "$REPO_ZSHRC" "$TARGET_ZSHRC"
-  log_info "Installed repository .zshrc"
-}
-
-set_default_shell_zsh() {
-  local zsh_path
-  zsh_path="$(command -v zsh 2>/dev/null || true)"
-  if [[ -z $zsh_path ]]; then
-    log_warn "zsh not found after install; skipping default shell change."
-    return
-  fi
-  if [[ ${SHELL:-} == "$zsh_path" ]]; then
-    log_info "Default shell already set to zsh."
-    return
-  fi
-  if chsh -s "$zsh_path" "$USER"; then
-    log_info "Changed default shell to zsh for $USER"
-  else
-    log_warn "Could not change default shell. Run: chsh -s \"$zsh_path\" \"$USER\""
+  if ! id -nG "$USER" | tr ' ' '\n' | grep -qx video; then
+    sudo usermod -aG video "$USER"
+    log_warn "Added $USER to video; the membership takes effect after login."
   fi
 }
 
+# Install and enable guest helpers for the detected virtualization platform.
+configure_virtualization() {
+  local virt
+  virt="$(systemd-detect-virt 2>/dev/null || printf 'unknown')"
+  case "$virt" in
+    oracle)
+      install_system_packages virtualbox-guest-utils
+      sudo systemctl enable --now vboxservice.service
+      ;;
+    vmware)
+      install_system_packages open-vm-tools
+      sudo systemctl enable --now vmtoolsd.service
+      ;;
+    qemu|kvm)
+      install_system_packages qemu-guest-agent spice-vdagent
+      sudo systemctl enable --now qemu-guest-agent.service spice-vdagentd.service
+      ;;
+    none) log_info "Bare-metal system detected." ;;
+    *) log_info "No supported virtual-machine guest integration detected." ;;
+  esac
+}
+
+# Print the installed experience and the only required follow-up action.
 final_summary() {
   show_banner
-  log_ok "Niri installation and configuration complete!"
-  echo
-  log_info "Configuration summary:"
-  cat <<'EOF'
-  • greetd + tuigreet display manager enabled
-  • Niri compositor with Waybar (Ant-Dracula theme)
-  • Kitty terminal emulator (Dracula theme)
-  • Brave browser
-  • NimLaunch application launcher
-  • Nymph fetch utility (auto-runs in terminal)
-  • Gtklock screen locker with Dracula theme
-  • Mako notification daemon (Dracula theme)
-  • GTK applications themed with Ant-Dracula
-  • PipeWire audio system (modern replacement for PulseAudio)
-  • Paru AUR helper installed
-  • Nerd Fonts with icon support
-  • Screenshot tools (grim + slurp + swappy + satty)
-  • Clipboard history collection via cliphist
-  • Removable-drive tray automounter (udiskie)
-  • Audio/brightness controls configured
-  • Auto-lock after 5 minutes of inactivity
-  • Consistent Dracula theme across all components
+  log_ok "Niri desktop installation is complete."
+  cat <<EOF
+
+- Official Niri session with XWayland and GNOME/GTK desktop portals
+- Waybar, Mako, SwayOSD, gtklock, idle handling, and clipboard history
+- NimLaunch with Niri window, audio, network, Bluetooth, and screenshot tools
+- PipeWire/WirePlumber audio, Bluetooth, NetworkManager, and power profiles
+- Fish as the default interactive shell with a native Dracula prompt
+- Thunar, Superfile, Kitty, Firefox, Brave when available, media tools, fonts, and themes
+- Existing configuration replacements backed up under:
+  $BACKUP_ROOT
+
+Reboot, then select Niri in tuigreet. Use Super+Shift+/ for the keybinding overlay.
 EOF
-  log_warn "Please reboot to start greetd. Select 'Niri' from the session menu."
-  echo
-  log_info "Basic key bindings:"
-  cat <<'EOF'
-  • Super + Enter: Open terminal (Kitty)
-  • Super + D: NimLaunch application launcher
-  • Super + B: Open Brave browser
-  • Super + N: Open Thunar file manager
-  • Mod + Shift + /: Show Niri keybinding overlay
-  • Super + I: Lock screen
-  • Super + Q: Close window
-  • Super + Shift + E: Exit Niri session
-  • Print: Screenshot
-  • Ctrl + Print: Screenshot current display
-  • Alt + Print: Screenshot focused window
-  • Super + Shift + Print: Screenshot region and open Satty
-EOF
-  log_info "Configuration lives in ~/.config"
-  log_info "Use 'paru' for additional AUR packages"
-  log_ok "Installer finished. Reboot to enjoy your new desktop!"
 }
 
-# --- main flow ------------------------------------------------------------
+# Run the full installation in dependency order.
 main() {
+  parse_args "$@"
   show_banner
-  log_info "Starting Niri installation on minimal Arch Linux..."
   require_environment
   confirm_run
+  sudo -v
+  prepare_build_dir
 
-  log_info "Updating system packages"
-  sudo pacman -Syu --noconfirm
+  log_info "Updating the complete Arch system"
+  if [[ $ASSUME_YES == 1 ]]; then
+    sudo pacman -Syu --noconfirm
+  else
+    sudo pacman -Syu
+  fi
 
   install_pkg_sets pacman "${PACMAN_SETS[@]}"
-  configure_virtualization
+  configure_microcode
   install_paru
   install_pkg_sets paru "${PARU_SETS[@]}"
-
-  install_local_bin "https://github.com/Vyrnexis/NimLaunch.git" nimlaunch
-  install_local_bin "https://github.com/Vyrnexis/Nymph.git" nymph \
-    'rm -rf "$HOME/.config/nymph/logos"; mkdir -p "$HOME/.config/nymph"; cp -r bin/logos "$HOME/.config/nymph/"'
-
+  install_nymph
+  configure_virtualization
   sync_configs
-  install_desktop_entries
-  log_info "Creating ~/Pictures/Screenshots"
-  mkdir -p "$HOME/Pictures/Screenshots"
-
   configure_greetd
   enable_services
   ensure_user_groups
-  ensure_niri_desktop_entry
 
-  log_info "Refreshing font cache"
-  fc-cache -fv
-
-  log_info "Deploying shell configs"
-  install_bashrc
-  install_zshrc
-  set_default_shell_zsh
-
+  log_info "Refreshing the font cache"
+  fc-cache -f
+  set_default_shell
   final_summary
 }
 
-main "$@"
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+  main "$@"
+fi

@@ -1,0 +1,24 @@
+# Modern terminal utilities
+bat
+btop
+eza
+fastfetch
+fd
+fzf
+ripgrep
+superfile
+zoxide
+
+# Terminal music clients
+cmus
+mpc
+mpd
+ncmpcpp
+
+# Firmware and hardware diagnostics
+fwupd
+lm_sensors
+nvme-cli
+pciutils
+smartmontools
+usbutils

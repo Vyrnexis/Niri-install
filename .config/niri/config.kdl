@@ -3,18 +3,8 @@
 // Check the wiki for full configuration: https://yalter.github.io/niri/Configuration:-Introduction
 
 environment {
-    GTK_THEME "Ant-Dracula"
     XCURSOR_THEME "Dracula-cursors"
     XCURSOR_SIZE "24"
-    GDK_BACKEND "wayland"
-    QT_QPA_PLATFORMTHEME "gtk3"
-    XDG_CURRENT_DESKTOP "niri"
-    XDG_SESSION_DESKTOP "niri"
-    XDG_SESSION_TYPE "wayland"
-    QT_QPA_PLATFORM "wayland"
-    SDL_VIDEODRIVER "wayland"
-    CLUTTER_BACKEND "wayland"
-    MOZ_ENABLE_WAYLAND "1"
 }
 
 // Input device configuration.
@@ -93,12 +83,13 @@ layout {
 }
 
 // Startup programs.
-spawn-at-startup "dbus-update-activation-environment --systemd --all"
+spawn-at-startup "swaybg" "-c" "#282a36"
 spawn-at-startup "waybar"
 spawn-at-startup "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1"
 spawn-at-startup "mako"
+spawn-at-startup "swayosd-server"
 spawn-at-startup "blueman-applet"
-spawn-sh-at-startup "sleep 2 && nm-applet --indicator"
+spawn-at-startup "nm-applet" "--indicator"
 spawn-sh-at-startup "~/.config/waybar/scripts/idle_toggle.sh enable"
 spawn-sh-at-startup "command -v wl-paste >/dev/null 2>&1 && command -v cliphist >/dev/null 2>&1 && wl-paste --type text --watch cliphist store"
 spawn-sh-at-startup "command -v wl-paste >/dev/null 2>&1 && command -v cliphist >/dev/null 2>&1 && wl-paste --type image --watch cliphist store"
@@ -141,18 +132,19 @@ binds {
 
     // Custom launcher/terminal/locker
     Mod+Return hotkey-overlay-title="Open a Terminal: kitty" { spawn "kitty"; }
-    Mod+D hotkey-overlay-title="Run an Application: NimLaunch" { spawn "~/.local/bin/nimlaunch"; }
-    Mod+B hotkey-overlay-title="Open Browser: Brave" { spawn "brave"; }
+    Mod+D hotkey-overlay-title="Run an Application" { spawn-sh "command -v nimlaunch >/dev/null 2>&1 && exec nimlaunch || exec fuzzel"; }
+    Mod+B hotkey-overlay-title="Open Browser" { spawn-sh "command -v brave >/dev/null 2>&1 && exec brave || exec firefox"; }
     Mod+N hotkey-overlay-title="Open File Manager: Thunar" { spawn "thunar"; }
     Mod+I hotkey-overlay-title="Lock the Screen: gtklock" { spawn "gtklock"; }
+    Mod+Alt+V hotkey-overlay-title="Clipboard History" { spawn "nwg-clipman"; }
 
     Super+Alt+S allow-when-locked=true hotkey-overlay-title=null { spawn-sh "pkill orca || exec orca"; }
 
     // Volume/media
-    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1+ -l 1.0"; }
-    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1-"; }
-    XF86AudioMute        allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
-    XF86AudioMicMute     allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "swayosd-client" "--output-volume" "+5" "--max-volume" "100"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "swayosd-client" "--output-volume" "-5"; }
+    XF86AudioMute        allow-when-locked=true { spawn "swayosd-client" "--output-volume" "mute-toggle"; }
+    XF86AudioMicMute     allow-when-locked=true { spawn "swayosd-client" "--input-volume" "mute-toggle"; }
 
     XF86AudioPlay        allow-when-locked=true { spawn-sh "playerctl play-pause"; }
     XF86AudioStop        allow-when-locked=true { spawn-sh "playerctl stop"; }
@@ -160,8 +152,8 @@ binds {
     XF86AudioNext        allow-when-locked=true { spawn-sh "playerctl next"; }
 
     // Brightness
-    XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+10%"; }
-    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "10%-"; }
+    XF86MonBrightnessUp allow-when-locked=true { spawn "swayosd-client" "--brightness" "+10"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "swayosd-client" "--brightness" "-10"; }
 
     Mod+O repeat=false { toggle-overview; }
     Mod+Q repeat=false { close-window; }

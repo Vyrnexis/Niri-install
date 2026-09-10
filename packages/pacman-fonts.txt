@@ -1,9 +1,0 @@
-# Fonts and glyph sets for the desktop environment
-gnu-free-fonts
-noto-fonts
-noto-fonts-emoji
-otf-font-awesome
-ttf-dejavu-nerd
-ttf-iosevka-nerd
-ttf-jetbrains-mono-nerd
-ttf-meslo-nerd
